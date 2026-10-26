@@ -1,0 +1,602 @@
+"use client";
+import { useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  CalendarClock,
+  Check,
+  Copy,
+  Link2,
+  NotebookPen,
+  SkipForward,
+  Trash2,
+} from "lucide-react";
+import {
+  workoutInput,
+  workoutTypes,
+  statuses,
+  type Workout,
+  type WorkoutInput,
+} from "@/lib/domain";
+import { localDate } from "@/lib/dates";
+import { useTraining, useEditingDisabled } from "../providers";
+import { Button } from "../ui/button";
+import { Dialog } from "../ui/dialog";
+type EditorProps = {
+  open: boolean;
+  onClose: () => void;
+  workout?: Workout;
+  date?: string;
+  duplicate?: boolean;
+};
+export function WorkoutEditor(props: EditorProps) {
+  return props.open ? (
+    <EditorForm
+      key={`${props.workout?.id ?? props.date ?? "new"}-${props.duplicate}`}
+      {...props}
+    />
+  ) : null;
+}
+function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
+  const { data, save, notify, offline } = useTraining();
+  const editingDisabled = useEditingDisabled();
+  const existing = w && !duplicate;
+  const [tab, setTab] = useState("workout");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [newWorkoutId] = useState(() => crypto.randomUUID());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [newDate, setNewDate] = useState(w?.date ?? localDate());
+  const [newTime, setNewTime] = useState(w?.time ?? "");
+  const [activityId, setActivityId] = useState(w?.linkedActivityId ?? "");
+  const feedback = data?.feedback.find((f) => f.workoutId === w?.id);
+  const form = useForm<z.input<typeof workoutInput>, unknown, WorkoutInput>({
+    resolver: zodResolver(workoutInput),
+    defaultValues: {
+      date: date ?? w?.date ?? localDate(),
+      time: w?.time ?? "06:00",
+      type: w?.type ?? "Easy Run",
+      title: duplicate ? `${w?.title} (copy)` : (w?.title ?? ""),
+      description: w?.description ?? "",
+      distanceKm: w?.distanceKm ?? null,
+      durationMin: w?.durationMin ?? null,
+      targetPace: w?.targetPace ?? "",
+      hrZone: w?.hrZone ?? null,
+      rpe: w?.rpe ?? null,
+      status: duplicate ? "Planned" : (w?.status ?? "Planned"),
+      optional: w?.optional ?? false,
+      notes: duplicate ? "" : (w?.notes ?? ""),
+    },
+  });
+  const watchedStatus = useWatch({ control: form.control, name: "status" });
+  const [journal, setJournal] = useState({
+    rpe: feedback?.rpe ?? null,
+    energy: feedback?.energy ?? null,
+    fatigue: feedback?.fatigue ?? null,
+    soreness: feedback?.soreness ?? null,
+    sleepQuality: feedback?.sleepQuality ?? null,
+    notes: feedback?.notes ?? "",
+    skippedReason: feedback?.skippedReason ?? "",
+  });
+  async function perform(
+    body: unknown,
+    message: string,
+    optimistic?: (d: NonNullable<typeof data>) => NonNullable<typeof data>,
+  ) {
+    setBusy(true);
+    setError("");
+    try {
+      await save(body, optimistic);
+      notify(message);
+      onClose();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const submit = form.handleSubmit((values) =>
+    perform(
+      existing
+        ? { action: "update", id: w.id, revision: w.revision, workout: values }
+        : { action: "create", id: newWorkoutId, workout: values },
+      existing ? "Workout updated" : "Workout added",
+      existing
+        ? (d) => ({
+            ...d,
+            workouts: d.workouts.map((x) =>
+              x.id === w.id ? { ...x, ...values } : x,
+            ),
+          })
+        : undefined,
+    ),
+  );
+  function status(status: Workout["status"]) {
+    if (!w) return;
+    void perform(
+      {
+        action: "update",
+        id: w.id,
+        revision: w.revision,
+        workout: { ...w, status },
+      },
+      status === "Skipped"
+        ? "Workout skipped. Future targets remain unchanged."
+        : "Completion saved with your manual confirmation.",
+    );
+  }
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !busy) onClose();
+      }}
+      title={
+        existing
+          ? "Your training session"
+          : duplicate
+            ? "Duplicate workout"
+            : "Plan a session"
+      }
+      description={
+        existing
+          ? `${w.type} · ${w.date} · ${w.status}`
+          : "Make room for movement. All targets are optional."
+      }
+    >
+      <div className="dialog-body">
+        {existing ? (
+          <div
+            className="editor-tabs"
+            role="tablist"
+            aria-label="Workout options"
+          >
+            {[
+              ["workout", "Workout"],
+              ["reschedule", "Reschedule"],
+              ["link", "Activity"],
+              ["journal", "Journal"],
+            ].map(([value, label]) => (
+              <button
+                role="tab"
+                aria-selected={tab === value}
+                key={value}
+                onClick={() => setTab(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {error ? (
+          <div role="alert" className="form-error">
+            {error}
+          </div>
+        ) : null}
+        <fieldset
+          disabled={busy || editingDisabled}
+          className="editor-fieldset"
+        >
+          {tab === "workout" ? (
+            <form onSubmit={submit} className="form-grid">
+              <label className="full">
+                Session title
+                <input
+                  {...form.register("title")}
+                  placeholder="e.g. Morning easy run"
+                />
+                {form.formState.errors.title ? (
+                  <span className="field-error">
+                    {form.formState.errors.title.message}
+                  </span>
+                ) : null}
+              </label>
+              <label>
+                Workout type
+                <select {...form.register("type")}>
+                  {workoutTypes.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Date
+                <input
+                  type="date"
+                  {...form.register("date")}
+                  readOnly={!!existing}
+                />
+              </label>
+              <label>
+                Start time <span className="muted">optional</span>
+                <input type="time" {...form.register("time")} />
+              </label>
+              <label>
+                Status
+                <select
+                  {...form.register("status")}
+                  disabled={
+                    !existing ||
+                    !!w?.linkedActivityId ||
+                    w?.status === "Rescheduled"
+                  }
+                >
+                  {statuses
+                    .filter(
+                      (s) => s !== "Rescheduled" || w?.status === "Rescheduled",
+                    )
+                    .map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                </select>
+              </label>
+              <label>
+                Target distance · km
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="1000"
+                  {...form.register("distanceKm", {
+                    setValueAs: (v) =>
+                      v === "" || v == null ? null : Number(v),
+                  })}
+                  placeholder="—"
+                />
+              </label>
+              <label>
+                Target duration · min
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="1440"
+                  {...form.register("durationMin", {
+                    setValueAs: (v) =>
+                      v === "" || v == null ? null : Number(v),
+                  })}
+                  placeholder="—"
+                />
+              </label>
+              <label>
+                Target pace · min/km
+                <input
+                  {...form.register("targetPace")}
+                  placeholder="e.g. 7:00–7:30"
+                />
+              </label>
+              <label>
+                Target HR zone
+                <select
+                  {...form.register("hrZone", {
+                    setValueAs: (v) =>
+                      v === "" || v == null ? null : Number(v),
+                  })}
+                >
+                  <option value="">No target</option>
+                  {[1, 2, 3, 4, 5].map((x) => (
+                    <option key={x} value={x}>
+                      Zone {x}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Target RPE · 1–10
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  {...form.register("rpe", {
+                    setValueAs: (v) =>
+                      v === "" || v == null ? null : Number(v),
+                  })}
+                />
+              </label>
+              <label className="check-label">
+                <input type="checkbox" {...form.register("optional")} />
+                Optional / tentative session
+              </label>
+              <label className="full">
+                Session description
+                <textarea {...form.register("description")} rows={2} />
+              </label>
+              <label className="full">
+                Personal notes
+                <textarea {...form.register("notes")} rows={2} />
+              </label>
+              {existing &&
+              ["Completed", "Partially Completed"].includes(
+                watchedStatus ?? "",
+              ) &&
+              !w.linkedActivityId ? (
+                <p className="helper full">
+                  Saving confirms that you completed this training. Planned
+                  distance stays a target; no Garmin metrics will be created.
+                </p>
+              ) : null}
+              {Object.keys(form.formState.errors).length ? (
+                <p className="field-error full">
+                  Check the highlighted fields, dates and target ranges before
+                  saving.
+                </p>
+              ) : null}
+              <div className="form-actions full">
+                {existing && w.status === "Planned" && !w.linkedActivityId ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    <Trash2 size={16} />
+                    Delete
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                <Button
+                  type="submit"
+                  disabled={busy || w?.status === "Rescheduled"}
+                >
+                  {busy ? "Saving…" : existing ? "Save changes" : "Add workout"}
+                </Button>
+              </div>
+              {confirmDelete ? (
+                <div className="confirm-box full">
+                  <p>
+                    Delete this planned workout? It will be hidden from your
+                    calendar; its revision history is retained.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() =>
+                      void perform(
+                        { action: "delete", id: w!.id, revision: w!.revision },
+                        "Planned workout deleted",
+                      )
+                    }
+                  >
+                    Delete workout
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setConfirmDelete(false)}
+                  >
+                    Keep workout
+                  </Button>
+                </div>
+              ) : null}
+            </form>
+          ) : null}
+          {tab === "reschedule" && w ? (
+            <div className="form-grid">
+              <p className="helper full">
+                Move this session without losing its original date. The original
+                entry stays in your history as Rescheduled.
+              </p>
+              <label>
+                New date
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                />
+              </label>
+              <label>
+                Start time
+                <input
+                  type="time"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                />
+              </label>
+              <Button
+                className="full"
+                disabled={w.status !== "Planned" || !!w.linkedActivityId}
+                onClick={() =>
+                  void perform(
+                    {
+                      action: "reschedule",
+                      id: w.id,
+                      revision: w.revision,
+                      date: newDate,
+                      time: newTime,
+                    },
+                    "Workout moved. Original schedule retained.",
+                  )
+                }
+              >
+                <CalendarClock size={17} />
+                Reschedule session
+              </Button>
+            </div>
+          ) : null}
+          {tab === "link" && w ? (
+            <div className="form-grid">
+              <p className="helper full">
+                Link one recorded activity to this session. Recorded Garmin
+                metrics stay read-only. A manual link confirms completion even
+                when targets differ.
+              </p>
+              <label className="full">
+                Recorded activity
+                <select
+                  value={activityId}
+                  onChange={(e) => setActivityId(e.target.value)}
+                >
+                  <option value="">No linked activity</option>
+                  {data?.activities
+                    .filter(
+                      (a) =>
+                        !data.links.some(
+                          (l) => l.activityId === a.id && l.workoutId !== w.id,
+                        ),
+                    )
+                    .toSorted((a, b) => b.date.localeCompare(a.date))
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.date} · {a.title} · {a.distanceKm?.toFixed(1) ?? "—"}{" "}
+                        km
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <Button
+                className="full"
+                onClick={() =>
+                  void perform(
+                    {
+                      action: "link",
+                      id: w.id,
+                      revision: w.revision,
+                      activityId: activityId || null,
+                    },
+                    activityId
+                      ? "Activity linked and session completed"
+                      : "Activity unlinked; plan restored",
+                  )
+                }
+              >
+                <Link2 size={16} />
+                Save activity link
+              </Button>
+            </div>
+          ) : null}
+          {tab === "journal" && w ? (
+            <div className="form-grid">
+              {(
+                [
+                  ["rpe", "Session RPE", 10],
+                  ["energy", "Energy", 5],
+                  ["fatigue", "Fatigue", 5],
+                  ["soreness", "Soreness", 5],
+                  ["sleepQuality", "Sleep quality", 5],
+                ] as const
+              ).map(([key, label, max]) => (
+                <label key={key}>
+                  {label} · 1–{max}
+                  <select
+                    value={journal[key] ?? ""}
+                    onChange={(e) =>
+                      setJournal({
+                        ...journal,
+                        [key]: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                  >
+                    <option value="">Not recorded</option>
+                    {Array.from({ length: max }, (_, i) => (
+                      <option key={i} value={i + 1}>
+                        {i + 1}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+              <label className="full">
+                How did it feel?
+                <textarea
+                  rows={3}
+                  value={journal.notes}
+                  onChange={(e) =>
+                    setJournal({ ...journal, notes: e.target.value })
+                  }
+                />
+              </label>
+              <label className="full">
+                Reason for skipped training
+                <input
+                  value={journal.skippedReason}
+                  onChange={(e) =>
+                    setJournal({ ...journal, skippedReason: e.target.value })
+                  }
+                />
+              </label>
+              <Button
+                className="full"
+                onClick={() =>
+                  void perform(
+                    {
+                      action: "feedback",
+                      id: feedback?.id ?? `journal-${w.id}`,
+                      revision: feedback?.revision ?? null,
+                      feedback: {
+                        ...journal,
+                        workoutId: w.id,
+                        activityId: w.linkedActivityId,
+                        date: w.date,
+                      },
+                    },
+                    "Training journal saved",
+                  )
+                }
+              >
+                <NotebookPen size={16} />
+                Save journal
+              </Button>
+            </div>
+          ) : null}
+          {existing &&
+          tab === "workout" &&
+          w.status === "Planned" &&
+          !w.linkedActivityId ? (
+            <div className="quick-actions">
+              <span>QUICK ACTIONS</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => status("Completed")}
+              >
+                <Check size={14} />I completed this
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => status("Skipped")}
+              >
+                <SkipForward size={14} />
+                Skip session
+              </Button>
+            </div>
+          ) : null}
+          {existing && tab === "workout" ? (
+            <div className="duplicate-action">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const values = form.getValues();
+                  void perform(
+                    {
+                      action: "create",
+                      id: crypto.randomUUID(),
+                      workout: { ...values, status: "Planned" },
+                    },
+                    "Workout duplicated as a new plan",
+                  );
+                }}
+              >
+                <Copy size={14} />
+                Duplicate this workout
+              </Button>
+            </div>
+          ) : null}
+        </fieldset>
+        {offline ? (
+          <p className="helper">
+            You’re offline. Editing is unavailable until you reconnect.
+          </p>
+        ) : null}
+        {data?.configured.readOnly ? (
+          <p className="helper">
+            This hosted preview is read-only. Configure Google Sheets and switch
+            to live mode to save training across your devices.
+          </p>
+        ) : null}
+      </div>
+    </Dialog>
+  );
+}

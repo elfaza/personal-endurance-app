@@ -1,0 +1,138 @@
+"use client";
+import {
+  Area,
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { dateLabel, pace } from "@/lib/dates";
+import type { weeklySeries } from "@/lib/calculations";
+export function TrainingChart({
+  series,
+  metric = "distance",
+}: {
+  series: ReturnType<typeof weeklySeries>;
+  metric?: "distance" | "pace" | "heart" | "volume" | "consistency";
+}) {
+  const keys =
+    metric === "distance"
+      ? [
+          { key: "runningKm", name: "Running", color: "#c5f576" },
+          { key: "cyclingKm", name: "Cycling", color: "#95a8f9" },
+          { key: "plannedKm", name: "Planned total", color: "#7b8388" },
+        ]
+      : metric === "pace"
+        ? [{ key: "pace", name: "Running pace", color: "#c5f576" }]
+        : metric === "heart"
+          ? [{ key: "avgHr", name: "Average HR", color: "#f1a48c" }]
+          : metric === "volume"
+            ? [{ key: "totalMin", name: "Training minutes", color: "#95a8f9" }]
+            : [{ key: "consistency", name: "Consistency", color: "#c5f576" }];
+  return (
+    <div
+      className="training-chart"
+      role="img"
+      aria-label={`Weekly ${metric} chart`}
+    >
+      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <ComposedChart
+          data={series}
+          margin={{ top: 15, right: 4, left: -28, bottom: 0 }}
+        >
+          <defs>
+            <linearGradient id={`fill-${metric}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={keys[0].color} stopOpacity={0.2} />
+              <stop offset="100%" stopColor={keys[0].color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            vertical={false}
+            stroke="var(--line)"
+            strokeDasharray="3 5"
+          />
+          <XAxis
+            dataKey="date"
+            tickFormatter={(d) =>
+              dateLabel(String(d), { day: "numeric", month: "short" })
+            }
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: "var(--muted)", fontSize: 11 }}
+            dy={10}
+            minTickGap={22}
+          />
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: "var(--muted)", fontSize: 11 }}
+            tickFormatter={(v) =>
+              metric === "pace" ? pace(Number(v)) : String(v)
+            }
+            domain={metric === "consistency" ? [0, 100] : undefined}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "var(--panel)",
+              border: "1px solid var(--line)",
+              borderRadius: 12,
+              fontSize: 12,
+              color: "var(--text)",
+            }}
+            labelFormatter={(d) => `Week of ${dateLabel(String(d))}`}
+            formatter={(v, name) => [
+              metric === "pace"
+                ? `${pace(Number(v))} /km`
+                : `${Math.round(Number(v) * 10) / 10}${metric === "distance" ? " km" : metric === "heart" ? " bpm" : metric === "volume" ? " min" : "%"}`,
+              name,
+            ]}
+          />
+          {metric === "distance" ? (
+            <>
+              <Bar
+                dataKey="cyclingKm"
+                name="Cycling"
+                fill="#95a8f9"
+                fillOpacity={0.55}
+                radius={[4, 4, 0, 0]}
+                maxBarSize={18}
+              />
+              <Area
+                type="monotone"
+                dataKey="runningKm"
+                name="Running"
+                stroke="#c5f576"
+                strokeWidth={2.5}
+                fill={`url(#fill-${metric})`}
+                activeDot={{ r: 5, stroke: "var(--panel)", strokeWidth: 3 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="plannedKm"
+                name="Planned total"
+                stroke="#7b8388"
+                strokeDasharray="4 5"
+                dot={false}
+                strokeWidth={1.5}
+              />
+            </>
+          ) : (
+            <Area
+              type="monotone"
+              dataKey={keys[0].key}
+              name={keys[0].name}
+              stroke={keys[0].color}
+              strokeWidth={2.5}
+              fill={`url(#fill-${metric})`}
+              connectNulls={false}
+            />
+          )}
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}

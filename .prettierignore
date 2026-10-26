@@ -1,0 +1,10 @@
+node_modules
+.next
+.next-e2e
+.local
+.data
+package-lock.json
+playwright-report
+test-results
+public/offline.js
+public/offline.html
