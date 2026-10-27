@@ -681,6 +681,39 @@ export function preparePlanSetup(original: PlanGrid, snapshot: Snapshot) {
       "The existing plan has ambiguous session identities. Review IDs before connecting.",
       409,
     );
+  // Journals saved before connecting the live plan may contain an RPE that
+  // has never been mirrored to its source column. Carry that value across in
+  // the setup transaction, before reads start treating the plan as canonical.
+  // An existing source value always wins; subsequent clears remain clears.
+  for (const workout of mapped) {
+    const row = state.positions.get(workout.id)!;
+    if (cellValue(grid.rows[row][state.columns.get("RPE")!]) !== "") continue;
+    const journals = snapshot.Feedback.filter(
+      (f) =>
+        !f.deleted &&
+        f.payload.workoutId === workout.id &&
+        f.payload.rpe != null,
+    );
+    if (!journals.length) continue;
+    const rpe = journals[0].payload.rpe;
+    if (
+      typeof rpe !== "number" ||
+      !Number.isInteger(rpe) ||
+      rpe < 1 ||
+      rpe > 10 ||
+      journals.some((f) => f.payload.rpe !== rpe)
+    )
+      throw new AppError(
+        "Existing journals have an invalid or conflicting RPE. Review them before connecting Training Plan.",
+        409,
+      );
+    changes.push({
+      dataset: "Feedback",
+      id: journals[0].id,
+      expected: journals[0].fingerprint,
+      payload: journals[0].payload,
+    });
+  }
   const working = { ...snapshot, Workouts: mapped, trainingPlan: state };
   return {
     requests: [...headerRequests, ...planWriteRequests(working, changes)],

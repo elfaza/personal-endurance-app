@@ -211,6 +211,100 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("Training Plan is the canonical calendar", () => {
+  it.each([null, 7])(
+    "preserves pre-connection journal RPE when the source starts at %s, then follows saved edits and explicit clears",
+    async (sourceRpe) => {
+      const google = fakePlanGoogle(),
+        client = new SheetsClient(google.http),
+        repo = new SheetsRepository(client);
+      const workout = canonical().Workouts[0];
+      const journal = {
+        workoutId: "legacy-session",
+        date: "2026-11-02",
+        rpe: 4,
+        energy: 3,
+        fatigue: 1,
+        soreness: 1,
+        sleepQuality: 4,
+        notes: "Already saved before connecting",
+        skippedReason: "",
+      };
+      const append = (title: string, id: string, payload: object) => {
+        google
+          .tabs()
+          .find((t) => t.title === title)!
+          .rows.push(
+            [
+              id,
+              `revision-${id}`,
+              "",
+              "2026-11-02T00:00:00Z",
+              "false",
+              JSON.stringify(payload),
+              `op-${id}`,
+            ].map(cell),
+          );
+      };
+      append("PE_Workouts", "legacy-session", workout.payload);
+      append("PE_Feedback", "journal", journal);
+      google.source().rows[1][12] = cell(sourceRpe ?? "");
+      await client.enableTrainingPlan();
+      let snapshot = (await repo.read()).snapshot;
+      expect(cellValue(google.source().rows[1][12])).toBe(sourceRpe ?? 4);
+      expect(toData(snapshot, true).feedback[0]).toMatchObject({
+        ...journal,
+        rpe: sourceRpe ?? 4,
+      });
+      expect(
+        google.tabs().find((t) => t.title === "PE_Feedback")!.rows,
+      ).toHaveLength(2);
+      // Setup, source RPE and the live marker are committed together.
+      const rpeBatch = google.batches.find((b) =>
+        b.some((r) => r.updateCells?.start.columnIndex === 12),
+      );
+      if (sourceRpe == null)
+        expect(rpeBatch?.at(-1)).toHaveProperty("deleteSheet");
+      else expect(rpeBatch).toBeUndefined();
+      await repo.commit(
+        [
+          {
+            dataset: "Feedback",
+            id: "journal",
+            expected: snapshot.Feedback[0].fingerprint,
+            payload: { ...journal, rpe: 6 },
+          },
+        ],
+        "edit-journal",
+        snapshot,
+      );
+      snapshot = (await repo.read()).snapshot;
+      expect(cellValue(google.source().rows[1][12])).toBe(6);
+      expect(toData(snapshot, true).feedback[0].rpe).toBe(6);
+      // Direct spreadsheet edits, including blanking the cell, stay authoritative.
+      google.source().rows[1][12] = cell("");
+      snapshot = (await repo.read()).snapshot;
+      expect(toData(snapshot, true).feedback[0].rpe).toBeNull();
+      await repo.commit(
+        [
+          {
+            dataset: "Feedback",
+            id: "journal",
+            expected: snapshot.Feedback[0].fingerprint,
+            payload: { ...journal, rpe: null },
+          },
+        ],
+        "clear-journal",
+        snapshot,
+      );
+      await client.enableTrainingPlan();
+      expect(
+        toData((await repo.read()).snapshot, true).feedback[0].rpe,
+      ).toBeNull();
+      expect(google.tabs().some((t) => t.title === WRITE_LOCK_TITLE)).toBe(
+        false,
+      );
+    },
+  );
   it("applies established round-trip commute preferences to new weekly commute rows", () => {
     const g = grid();
     g.rows[1] = sourceRow("2026-11-03", "Bike to Work (Controlled)");
