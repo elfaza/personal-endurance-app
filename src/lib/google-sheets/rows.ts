@@ -28,7 +28,9 @@ export interface Change {
   payload: Record<string, unknown>;
   deleted?: boolean;
 }
-export type Snapshot = Record<Dataset, Stored[]>;
+export type Snapshot = Record<Dataset, Stored[]> & {
+  trainingPlan?: import("./training-plan").TrainingPlanState;
+};
 export function fingerprint(row: string[]) {
   return createHash("sha256")
     .update(JSON.stringify(row))

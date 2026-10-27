@@ -66,6 +66,8 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
       type: w?.type ?? "Easy Run",
       title: duplicate ? `${w?.title} (copy)` : (w?.title ?? ""),
       description: w?.description ?? "",
+      goal: w?.goal ?? "",
+      durationText: w?.durationText ?? "",
       distanceKm: w?.distanceKm ?? null,
       durationMin: w?.durationMin ?? null,
       targetPace: w?.targetPace ?? "",
@@ -343,6 +345,13 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
                   placeholder="e.g. 7:00–7:30"
                 />
               </label>
+              <label className="full">
+                Duration range / detail · min
+                <input
+                  {...form.register("durationText")}
+                  placeholder="e.g. 40–55; used when no numeric duration is set"
+                />
+              </label>
               <label>
                 Target HR zone
                 <select
@@ -382,6 +391,10 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
               <label className="full">
                 Personal notes
                 <textarea {...form.register("notes")} rows={2} />
+              </label>
+              <label className="full">
+                Session goal
+                <textarea {...form.register("goal")} rows={2} />
               </label>
               {existing &&
               ["Completed", "Partially Completed"].includes(

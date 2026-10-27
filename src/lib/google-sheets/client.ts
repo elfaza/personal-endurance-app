@@ -5,6 +5,17 @@ import { datasets, type Dataset } from "../domain";
 import { HEADERS, mapRows, type Snapshot } from "./rows";
 import { AppError } from "../server/errors";
 import { oauthReady, tokenResponse } from "./oauth";
+import { fingerprint } from "./rows";
+import {
+  PLAN_TAB,
+  PLAN_MARKER,
+  planState,
+  readPlan,
+  preparePlanSetup,
+  type PlanCell,
+  type PlanGrid,
+  type TrainingPlanState,
+} from "./training-plan";
 export const WRITE_LOCK_TITLE = "PE_Write_Lock";
 export type SheetCommit = (requests: unknown[]) => Promise<void>;
 const sheetSchema = z.object({
@@ -12,7 +23,13 @@ const sheetSchema = z.object({
   properties: z.object({ title: z.string() }),
   sheets: z.array(
     z.object({
-      properties: z.object({ sheetId: z.number(), title: z.string() }),
+      properties: z.object({
+        sheetId: z.number(),
+        title: z.string(),
+        gridProperties: z
+          .object({ rowCount: z.number(), columnCount: z.number() })
+          .optional(),
+      }),
     }),
   ),
 });
@@ -168,7 +185,7 @@ export class SheetsClient {
   async inspect(): Promise<SheetInventory> {
     return sheetSchema.parse(
       await this.request(
-        "?fields=spreadsheetId,properties(title),sheets(properties(sheetId,title))",
+        "?fields=spreadsheetId,properties(title),sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)))",
       ),
     );
   }
@@ -200,7 +217,140 @@ export class SheetsClient {
     present.forEach(
       (d, i) => (snapshot[d] = mapRows(result.valueRanges[i]?.values)),
     );
+    const source = snapshot.Meta.find(
+      (r) => r.id === PLAN_MARKER && !r.deleted && r.payload.enabled === true,
+    );
+    if (source) {
+      const grid = await this.readPlanGrid(info);
+      if (grid.sheetId !== source.payload.sheetId)
+        throw new AppError(
+          "The connected Training Plan worksheet identity changed. Review its setup before editing.",
+          409,
+        );
+      const state = planState(grid, snapshot.Workouts);
+      snapshot.trainingPlan = state;
+      snapshot.Workouts = readPlan(state);
+      snapshot.Feedback = snapshot.Feedback.map((record) => {
+        const position = state.positions.get(String(record.payload.workoutId));
+        if (position == null) return record;
+        const value = grid.rows[position][state.columns.get("RPE")!];
+        const scalar =
+          value?.effectiveValue?.numberValue ??
+          value?.userEnteredValue?.numberValue ??
+          value?.effectiveValue?.stringValue ??
+          value?.userEnteredValue?.stringValue ??
+          "";
+        const rpe = scalar === "" ? null : Number(scalar);
+        if (rpe != null && (!Number.isInteger(rpe) || rpe < 1 || rpe > 10))
+          throw new AppError("A Training Plan RPE must be blank or 1–10.", 409);
+        return {
+          ...record,
+          payload: { ...record.payload, rpe },
+          fingerprint: fingerprint([record.fingerprint, JSON.stringify(value)]),
+        };
+      });
+    }
     return { snapshot, initialized: present.length === datasets.length };
+  }
+  async readPlanGrid(info?: SheetInventory): Promise<PlanGrid> {
+    const inventory = info ?? (await this.inspect());
+    const sheet = inventory.sheets.find(
+      (s) => s.properties.title === PLAN_TAB,
+    )?.properties;
+    if (!sheet?.gridProperties)
+      throw new AppError(
+        "Training Plan is missing or its layout could not be read.",
+        409,
+      );
+    const { rowCount, columnCount } = sheet.gridProperties;
+    if (rowCount > 10000 || columnCount > 52)
+      throw new AppError(
+        "Training Plan exceeds the supported live layout (10,000 rows and 52 columns). Archive older rows before connecting.",
+        409,
+      );
+    const lastColumn =
+      columnCount <= 26
+        ? String.fromCharCode(64 + columnCount)
+        : `A${String.fromCharCode(64 + columnCount - 26)}`;
+    const range = `'${PLAN_TAB}'!A1:${lastColumn}${rowCount}`;
+    const raw = await this.request(
+      `?ranges=${encodeURIComponent(range)}&includeGridData=true&fields=sheets(properties(sheetId,title),data(rowData(values(userEnteredValue,effectiveValue,formattedValue,dataValidation))))`,
+    );
+    const parsed = z
+      .object({
+        sheets: z.array(
+          z.object({
+            properties: z.object({ sheetId: z.number(), title: z.string() }),
+            data: z
+              .array(
+                z.object({
+                  rowData: z
+                    .array(
+                      z.object({
+                        values: z
+                          .array(z.record(z.string(), z.unknown()))
+                          .optional(),
+                      }),
+                    )
+                    .optional(),
+                }),
+              )
+              .optional(),
+          }),
+        ),
+      })
+      .parse(raw);
+    const found = parsed.sheets.find(
+      (s) =>
+        s.properties.sheetId === sheet.sheetId &&
+        s.properties.title === PLAN_TAB,
+    );
+    if (!found)
+      throw new AppError(
+        "Training Plan read returned the wrong worksheet.",
+        409,
+      );
+    return {
+      sheetId: sheet.sheetId,
+      rowCount,
+      columnCount,
+      rows: (found.data?.[0]?.rowData ?? []).map(
+        (r) => (r.values ?? []) as PlanCell[],
+      ),
+    };
+  }
+  async enableTrainingPlan() {
+    return this.withWriteLock(async (commit) => {
+      const { snapshot, initialized } = await this.read();
+      if (!initialized)
+        throw new AppError("Create the PE worksheets first.", 409);
+      if (snapshot.trainingPlan) return;
+      const grid = await this.readPlanGrid();
+      const setup = preparePlanSetup(grid, snapshot);
+      const operation = randomUUID(),
+        now = new Date().toISOString();
+      const prior = snapshot.Meta.find((r) => r.id === PLAN_MARKER);
+      const marker = [
+        PLAN_MARKER,
+        operation,
+        prior?.revision ?? "",
+        now,
+        "false",
+        JSON.stringify({ enabled: true, sheetId: grid.sheetId }),
+        operation,
+      ];
+      const latest = await this.readPlanGrid();
+      if (JSON.stringify(latest) !== JSON.stringify(grid))
+        throw new AppError(
+          "Training Plan changed during setup. Refresh and review before enabling it.",
+          409,
+        );
+      await this.append(
+        [{ dataset: "Meta", values: marker }],
+        commit,
+        setup.requests,
+      );
+    });
   }
   async initialize() {
     await this.read(); // Refuse unexpected existing PE schemas before any write.
@@ -244,6 +394,8 @@ export class SheetsClient {
   async append(
     rows: { dataset: Dataset; values: string[] }[],
     commit: SheetCommit,
+    extraRequests: unknown[] = [],
+    plan?: TrainingPlanState,
   ) {
     if (!rows.length) return;
     const info = await this.inspect();
@@ -271,7 +423,15 @@ export class SheetsClient {
       };
     });
     // One atomic Sheets request for workout + link + reschedule history changes.
-    await commit(requests);
+    if (plan && extraRequests.length) {
+      const latest = await this.readPlanGrid(info);
+      if (fingerprint([JSON.stringify(latest)]) !== plan.hash)
+        throw new AppError(
+          "Training Plan changed just before saving. Refresh and review the newer version.",
+          409,
+        );
+    }
+    await commit([...requests, ...extraRequests]);
   }
   async verifyConnection() {
     // Only a new disposable tab receives the test value. Existing cells,

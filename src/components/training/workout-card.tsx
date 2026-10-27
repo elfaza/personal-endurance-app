@@ -73,6 +73,8 @@ export function WorkoutCard({
                 </>
               ) : w.durationMin ? (
                 `${w.durationMin} min`
+              ) : w.durationText ? (
+                `${w.durationText} min`
               ) : (
                 "Open target"
               )}

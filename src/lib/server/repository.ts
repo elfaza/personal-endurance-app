@@ -13,6 +13,7 @@ import {
   type Snapshot,
 } from "../google-sheets/rows";
 import { sheets } from "../google-sheets/client";
+import { planWriteRequests } from "../google-sheets/training-plan";
 import { configuration } from "./config";
 import { AppError } from "./errors";
 
@@ -103,7 +104,10 @@ function prepare(snapshot: Snapshot, changes: Change[], op: string) {
     const values = [
       c.id,
       revision,
-      current?.revision ?? "",
+      c.dataset === "Workouts" && snapshot.trainingPlan
+        ? (snapshot.trainingPlan.shadow.find((r) => r.id === c.id)?.revision ??
+          "")
+        : (current?.revision ?? ""),
       now,
       String(c.deleted ?? false),
       JSON.stringify(c.payload),
@@ -130,7 +134,7 @@ export class DemoRepository implements Repository {
     return {
       snapshot: Object.fromEntries(
         datasets.map((d) => [d, mapRows(logs[d])]),
-      ) as Snapshot,
+      ) as unknown as Snapshot,
       initialized: true,
     };
   }
@@ -143,7 +147,7 @@ export class DemoRepository implements Repository {
     const logs = await readLogs();
     const snapshot = Object.fromEntries(
       datasets.map((d) => [d, mapRows(logs[d])]),
-    ) as Snapshot;
+    ) as unknown as Snapshot;
     if (
       !snapshot.Meta.some((r) => r.id === `op:${op}`) &&
       expectedSnapshot &&
@@ -187,7 +191,14 @@ export class SheetsRepository implements Repository {
           "Training changed elsewhere. Refresh and review the latest data before saving.",
           409,
         );
-      await this.client.append(prepare(snapshot, changes, op), commit);
+      const rows = prepare(snapshot, changes, op);
+      if (!rows.length) return;
+      await this.client.append(
+        rows,
+        commit,
+        planWriteRequests(snapshot, changes),
+        snapshot.trainingPlan,
+      );
     });
   }
 }

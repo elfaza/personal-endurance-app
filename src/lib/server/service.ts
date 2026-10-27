@@ -115,6 +115,7 @@ export function toData(snapshot: Snapshot, initialized: boolean): AppData {
       sheets: config.sheets,
       initialized,
       readOnly: config.readOnly,
+      planSource: snapshot.trainingPlan ? "training-plan" : "pe-workouts",
     },
   };
 }

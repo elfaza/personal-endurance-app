@@ -31,6 +31,8 @@ export const workoutInput = z.object({
   type: z.enum(workoutTypes),
   title: z.string().trim().min(1).max(120),
   description: z.string().max(2000).default(""),
+  goal: z.string().max(2000).optional(),
+  durationText: z.string().max(300).optional(),
   distanceKm: z.number().min(0).max(1000).nullable().default(null),
   durationMin: z.number().min(0).max(1440).nullable().default(null),
   targetPace: z.string().max(30).default(""),
@@ -156,6 +158,7 @@ export interface AppData {
     sheets: boolean;
     initialized: boolean;
     readOnly?: boolean;
+    planSource?: "training-plan" | "pe-workouts";
   };
 }
 export type Dataset =

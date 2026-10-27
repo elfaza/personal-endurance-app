@@ -11,6 +11,67 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
+test("live plan source is clear and editing keeps sheet goals and duration ranges", async ({
+  page,
+}) => {
+  const fixture = demoData("2026-11-02");
+  const workout = {
+    ...fixture.workouts[0],
+    date: "2026-11-02",
+    title: "Weekly generated run",
+    type: "Easy Run" as const,
+    status: "Planned" as const,
+    distanceKm: null,
+    durationMin: null,
+    durationText: "40–55",
+    goal: "Build consistency",
+    linkedActivityId: undefined,
+    linkedActivityIds: [],
+  };
+  fixture.workouts = [workout];
+  fixture.links = [];
+  fixture.configured = {
+    ...fixture.configured,
+    sheets: true,
+    initialized: true,
+    readOnly: false,
+    planSource: "training-plan",
+  };
+  const posted: Record<string, unknown>[] = [];
+  await page.route("**/api/data", (route) => route.fulfill({ json: fixture }));
+  await page.route("**/api/training", (route) => {
+    posted.push(route.request().postDataJSON());
+    return route.fulfill({ json: { ok: true } });
+  });
+  await page.goto("/settings");
+  await expect(
+    page.getByText("Training Plan · live", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Your calendar reads the Training Plan tab directly.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page.goto("/calendar");
+  await page.getByLabel("Go to date").fill(workout.date);
+  const card = page.locator(".workout-card").filter({ hasText: workout.title });
+  await expect(card).toContainText("40–55 min");
+  await card.click();
+  await expect(page.getByLabel("Session goal")).toHaveValue(
+    "Build consistency",
+  );
+  await expect(page.getByLabel("Duration range / detail")).toHaveValue("40–55");
+  await page.getByLabel("Personal notes").fill("Saved on web");
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  expect(posted[0].workout).toMatchObject({
+    goal: "Build consistency",
+    durationText: "40–55",
+    durationMin: null,
+    notes: "Saved on web",
+  });
+});
+
 test("round-trip progress stays partial and the editor adds only a compatible return ride", async ({
   page,
 }) => {

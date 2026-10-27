@@ -82,6 +82,21 @@ export function Settings() {
       setInitializing(false);
     }
   }
+  async function connectPlan() {
+    setInitializing(true);
+    setError("");
+    try {
+      await request("/api/sheets/training-plan", {});
+      await refresh();
+      notify(
+        "Training Plan is live. Weekly sheet updates will appear automatically.",
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setInitializing(false);
+    }
+  }
   function theme() {
     const next = !light;
     setLight(next);
@@ -180,9 +195,18 @@ export function Settings() {
           ) : (
             <>
               <p className="helper">
-                Review your spreadsheet and finish setting up your training
-                workspace. Your existing tabs stay intact.
+                {data.configured.planSource === "training-plan"
+                  ? "Your calendar reads the Training Plan tab directly. Weekly additions and sheet edits appear automatically; web edits save back to the same rows."
+                  : "Review your spreadsheet and connect the Training Plan tab so weekly updates appear automatically."}
               </p>
+              <div className="settings-detail">
+                <span>Calendar source</span>
+                <strong>
+                  {data.configured.planSource === "training-plan"
+                    ? "Training Plan · live"
+                    : "PE worksheets"}
+                </strong>
+              </div>
               <div className="settings-detail">
                 <span>Refresh interval</span>
                 <strong>45 seconds while active</strong>
@@ -192,6 +216,17 @@ export function Settings() {
                 <strong>Refresh on focus & reconnect</strong>
               </div>
               <div className="connection-actions">
+                {data.configured.initialized &&
+                data.configured.planSource !== "training-plan" ? (
+                  <Button
+                    onClick={() => void connectPlan()}
+                    disabled={offline || initializing || data.mode === "demo"}
+                  >
+                    {initializing
+                      ? "Connecting…"
+                      : "Connect live Training Plan"}
+                  </Button>
+                ) : null}
                 <Button
                   variant="outline"
                   onClick={() => void inspect()}
@@ -238,10 +273,12 @@ export function Settings() {
                 </div>
               ))}
               <p className="helper">
-                Existing tabs remain intact. Map columns below to bring existing
-                plans into your PE datasets.
+                {data.configured.planSource === "training-plan"
+                  ? "Training Plan is connected. Keep PE_ID and PE_Metadata columns when your weekly schedule updates the sheet."
+                  : "Connect Training Plan for weekly updates, or import another tracker once using the mapping below."}
               </p>
-              {data.configured.initialized ? (
+              {data.configured.initialized &&
+              data.configured.planSource !== "training-plan" ? (
                 <SheetsImport tabs={inventory.tabs} />
               ) : null}
             </div>

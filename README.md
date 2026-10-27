@@ -66,7 +66,7 @@ After changing environment variables, redeploy (or restart locally). Secrets and
 5. Sign in and open `/settings/google`. Select **Connect Google**, approve editing access, then copy the refresh token from the private masked page directly into GOOGLE_REFRESH_TOKEN in Vercel. Redeploy again. Live mode activates automatically. The completion page uses no-store, no-referrer and a nonce CSP; it clears on exit or after five minutes.
 6. Verify reading and writing from Google setup. This writes and reads a marker only in a new disposable hidden worksheet, then deletes only that exact worksheet. Existing content is never targeted. A failed verification may retain the test worksheet or lock for review; do not retry an uncertain write automatically.
 7. In **Settings → Google Sheets → Inspect spreadsheet**, review the existing worksheet names and headers. Then select **Create PE worksheets**. Only missing PE datasets are added. An incompatible PE schema is rejected before mutation.
-8. Preview an explicit column mapping to import existing plans, or create plans in the app. Original tracker tabs are not overwritten.
+8. For this tracker, select **Connect live Training Plan**. The original `Training Plan` becomes the calendar source, and web edits save back to it. Other tracker layouts can still use the one-time import described below.
 
 Google’s [Testing audience rules](https://support.google.com/cloud/answer/15549945) expire Sheets refresh tokens after seven days. For ongoing use, configure the OAuth app’s production publishing status as appropriate and reconnect; Google may require verification or show an unverified-app warning. The app requests only the Sheets scope, which allows access to spreadsheets the authorizing account can access; the server is pinned to its configured spreadsheet ID.
 
@@ -74,14 +74,14 @@ OAuth initiation is an authenticated same-origin POST. A ten-minute HttpOnly Sam
 
 ### Dedicated datasets and column mapping
 
-| Worksheet          | Dataset                                                                    |
-| ------------------ | -------------------------------------------------------------------------- |
-| `PE_Workouts`      | Planned sessions, manual confirmation and rescheduling references          |
-| `PE_Feedback`      | RPE, energy, fatigue, soreness, sleep quality, notes and skipped reason    |
-| `PE_Goals`         | Multiple race/distance goals, optional exact dates and target time         |
-| `PE_ActivityLinks` | Unique workout-to-activity mappings, separate from recorded metrics        |
-| `PE_Activities`    | Persistent normalized Garmin activity cache (Garmin remains authoritative) |
-| `PE_Meta`          | Last sync/error state and mutation operation receipts                      |
+| Worksheet          | Dataset                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| `PE_Workouts`      | Workout revision history; legacy calendar source before Training Plan is connected |
+| `PE_Feedback`      | RPE, energy, fatigue, soreness, sleep quality, notes and skipped reason            |
+| `PE_Goals`         | Multiple race/distance goals, optional exact dates and target time                 |
+| `PE_ActivityLinks` | Unique workout-to-activity mappings, separate from recorded metrics                |
+| `PE_Activities`    | Persistent normalized Garmin activity cache (Garmin remains authoritative)         |
+| `PE_Meta`          | Last sync/error state and mutation operation receipts                              |
 
 Each dataset uses the documented adapter in `src/lib/google-sheets/rows.ts` and these exact columns:
 
@@ -90,6 +90,18 @@ id | revision | parent_revision | updated_at | deleted | payload_json | operatio
 ```
 
 The payload is JSON in one cell. This deliberately keeps a compact common persistence adapter while retaining old revisions, stable IDs, and separate logical datasets. The app uses **append-only rows**, rather than finding a row by an unstable row number and overwriting it. `deleted=true` hides a plan while retaining its history. Writes use `stringValue`, preventing note text from being interpreted as a spreadsheet formula.
+
+### Live Training Plan and weekly generation
+
+`Training Plan` is the canonical calendar when `PE_Meta` contains the enabled `training-plan-source` marker. Its existing columns are Date, Day, Session, Planned detail, Goal, Target km, Target min, Status, Actual km, Actual min, Avg HR, Max HR, RPE, and Notes. Setup adds `PE_ID` and `PE_Metadata` in unused columns and retains current web IDs, activity links, commute settings and completion updates. Existing PE revision history remains intact. The two extra columns contain app settings, never credentials.
+
+Every authenticated data refresh reads the original tab (45 seconds while active, and on focus/reconnect). Weekly rows added to the original columns appear without re-importing, even with blank PE columns. An identity derived from sheet/date/session/time is used until the first web save assigns a stable PE_ID. Keep explicit IDs when sorting or changing existing sessions; indistinguishable duplicate rows require distinct IDs. Existing round-trip commute preferences supply defaults for new bike-to-work rows.
+
+Web saves re-read under the shared lock, check the browser revision and full snapshot, then check the original grid again immediately before an atomic batch. Only changed `userEnteredValue` cells are updated; formulas, formatting, dropdown validation and unrelated columns are preserved. An attempted formula overwrite is rejected. Numeric targets and free-text duration ranges are kept separately. `Modified` maps to Partially Completed; Optional/Tentative remain optional plans. Deleted sessions stay in the sheet as Skipped with metadata marking deletion; rescheduled originals stay as Skipped with metadata recording Rescheduled and the replacement ID, preserving existing dropdown rules. Source status edits supersede a reschedule override.
+
+Linked Garmin activities write actual distance, duration and heart rates to the corresponding plan row; mixed-sport sessions use only the primary sport for those metrics. Journal RPE writes to the plan's RPE cell; additional journal fields, race goals and activity links stay in PE datasets. This connection does not independently populate `Workout Log` or `HM Roadmap 2027`. Existing Dashboard formulas continue using their existing references.
+
+The weekly generator should append new rows in A:N, preserve headers and PE columns, and avoid resetting historical statuses/actuals. To serialize concurrent generator edits with web saves, the generator must use the same `PE_Write_Lock` protocol: acquire the uniquely named hidden tab, reread after acquisition, submit its exact cell updates and deletion of its own lock ID in one atomic batch, and never automatically retry an uncertain write. Do not steal a lock based on age. A scheduler that bypasses this protocol can still race in the final gap between a read and write; Sheets does not provide a compare-and-swap cell API. The app's checks catch external edits visible before submission, but cannot guarantee serialization with an uncoordinated writer.
 
 Workout payload fields:
 
