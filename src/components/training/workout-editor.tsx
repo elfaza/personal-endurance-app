@@ -16,6 +16,9 @@ import {
   workoutInput,
   workoutTypes,
   statuses,
+  activityIdsForLink,
+  activityFitsWorkout,
+  expectedActivityCount,
   type Workout,
   type WorkoutInput,
 } from "@/lib/domain";
@@ -49,7 +52,11 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [newDate, setNewDate] = useState(w?.date ?? localDate());
   const [newTime, setNewTime] = useState(w?.time ?? "");
-  const [activityId, setActivityId] = useState(w?.linkedActivityId ?? "");
+  const multipleActivities = !!w && expectedActivityCount(w) === 2;
+  const activityNoun = w?.type === "Bike-to-Work" ? "rides" : "activities";
+  const [activityId, setActivityId] = useState(
+    multipleActivities ? "" : (w?.linkedActivityId ?? ""),
+  );
   const feedback = data?.feedback.find((f) => f.workoutId === w?.id);
   const form = useForm<z.input<typeof workoutInput>, unknown, WorkoutInput>({
     resolver: zodResolver(workoutInput),
@@ -66,10 +73,20 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
       rpe: w?.rpe ?? null,
       status: duplicate ? "Planned" : (w?.status ?? "Planned"),
       optional: w?.optional ?? false,
+      commuteLegs: w?.commuteLegs ?? 1,
+      commuteReturnTime: w?.commuteReturnTime ?? "",
+      activityCount: w?.activityCount ?? 1,
+      allowMixedSports: w?.allowMixedSports ?? false,
       notes: duplicate ? "" : (w?.notes ?? ""),
     },
   });
   const watchedStatus = useWatch({ control: form.control, name: "status" });
+  const watchedType = useWatch({ control: form.control, name: "type" });
+  const watchedLegs = useWatch({ control: form.control, name: "commuteLegs" });
+  const watchedActivityCount = useWatch({
+    control: form.control,
+    name: "activityCount",
+  });
   const [journal, setJournal] = useState({
     rpe: feedback?.rpe ?? null,
     energy: feedback?.energy ?? null,
@@ -99,7 +116,15 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
   const submit = form.handleSubmit((values) =>
     perform(
       existing
-        ? { action: "update", id: w.id, revision: w.revision, workout: values }
+        ? {
+            action: "update",
+            id: w.id,
+            revision: w.revision,
+            workout: {
+              ...values,
+              status: w.linkedActivityId ? w.status : values.status,
+            },
+          }
         : { action: "create", id: newWorkoutId, workout: values },
       existing ? "Workout updated" : "Workout added",
       existing
@@ -212,6 +237,58 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
                 Start time <span className="muted">optional</span>
                 <input type="time" {...form.register("time")} />
               </label>
+              {watchedType === "Bike-to-Work" ? (
+                <>
+                  <label>
+                    Commute plan
+                    <select
+                      {...form.register("commuteLegs", { setValueAs: Number })}
+                    >
+                      <option value={1}>One ride</option>
+                      <option value={2}>To work + return ride</option>
+                    </select>
+                  </label>
+                  {watchedLegs === 2 ? (
+                    <label>
+                      Return ride start <span className="muted">optional</span>
+                      <input
+                        type="time"
+                        {...form.register("commuteReturnTime")}
+                      />
+                    </label>
+                  ) : null}
+                  <p className="helper full">
+                    A timed commute can match a unique Garmin ride without a
+                    distance target. Two-ride plans stay partially completed
+                    after the first ride. Set a return start time to match the
+                    second ride automatically.
+                  </p>
+                </>
+              ) : null}
+              {watchedType !== "Bike-to-Work" && watchedType !== "Rest Day" ? (
+                <>
+                  <label>
+                    Recorded activities expected
+                    <select
+                      {...form.register("activityCount", {
+                        setValueAs: Number,
+                      })}
+                    >
+                      <option value={1}>One activity</option>
+                      <option value={2}>Two activities</option>
+                    </select>
+                  </label>
+                  {watchedActivityCount === 2 ? (
+                    <label className="check-label">
+                      <input
+                        type="checkbox"
+                        {...form.register("allowMixedSports")}
+                      />
+                      Allow different sports on the same date
+                    </label>
+                  ) : null}
+                </>
+              ) : null}
               <label>
                 Status
                 <select
@@ -417,23 +494,62 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
           {tab === "link" && w ? (
             <div className="form-grid">
               <p className="helper full">
-                Link one recorded activity to this session. Recorded Garmin
-                metrics stay read-only. A manual link confirms completion even
-                when targets differ.
+                Link a recorded activity from the same date and sport. Recorded
+                Garmin metrics stay read-only. A manual link confirms a recorded
+                ride even when targets differ. A round trip needs both rides to
+                be completed.
               </p>
+              {multipleActivities && w.linkedActivityIds?.length ? (
+                <div className="full">
+                  <strong>
+                    {w.linkedActivityIds.length} of 2 {activityNoun} completed
+                  </strong>
+                  {w.linkedActivityIds.map((id) => (
+                    <p className="helper" key={id}>
+                      {data?.activities.find((a) => a.id === id)?.title ?? id}
+                    </p>
+                  ))}
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      void perform(
+                        {
+                          action: "link",
+                          id: w.id,
+                          revision: w.revision,
+                          activityId: null,
+                          activityIds: [],
+                        },
+                        "Activities unlinked; plan restored",
+                      )
+                    }
+                  >
+                    Unlink all {activityNoun}
+                  </Button>
+                </div>
+              ) : null}
               <label className="full">
                 Recorded activity
                 <select
                   value={activityId}
                   onChange={(e) => setActivityId(e.target.value)}
                 >
-                  <option value="">No linked activity</option>
+                  <option value="">
+                    {multipleActivities
+                      ? "Choose an activity to add"
+                      : "No linked activity"}
+                  </option>
                   {data?.activities
                     .filter(
                       (a) =>
+                        activityFitsWorkout(w, a) &&
                         !data.links.some(
-                          (l) => l.activityId === a.id && l.workoutId !== w.id,
-                        ),
+                          (l) =>
+                            activityIdsForLink(l).includes(a.id) &&
+                            l.workoutId !== w.id,
+                        ) &&
+                        (!multipleActivities ||
+                          !w.linkedActivityIds?.includes(a.id)),
                     )
                     .toSorted((a, b) => b.date.localeCompare(a.date))
                     .map((a) => (
@@ -446,6 +562,10 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
               </label>
               <Button
                 className="full"
+                disabled={
+                  multipleActivities &&
+                  (!activityId || (w.linkedActivityIds?.length ?? 0) >= 2)
+                }
                 onClick={() =>
                   void perform(
                     {
@@ -453,9 +573,19 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
                       id: w.id,
                       revision: w.revision,
                       activityId: activityId || null,
+                      activityIds: multipleActivities
+                        ? [
+                            ...new Set(
+                              [
+                                ...(w.linkedActivityIds ?? []),
+                                activityId,
+                              ].filter(Boolean),
+                            ),
+                          ]
+                        : undefined,
                     },
                     activityId
-                      ? "Activity linked and session completed"
+                      ? "Recorded activity linked"
                       : "Activity unlinked; plan restored",
                   )
                 }

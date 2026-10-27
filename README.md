@@ -24,7 +24,7 @@ Development demo access without a password is restricted to localhost. Configure
 - Usual-week action: Monday easy run, Tuesday commute, Wednesday intervals, tentative Thursday commute, Friday long run and weekend rest. It leaves occupied days intact and adds no automatic training targets or progression.
 - Official Garmin Personal API bearer exchange, in-memory token expiry/cache, one retry after unauthorized bearer, paginated activity sync with stable-ID deduplication, detail DTO normalization, available split summaries/HR-zone durations and original ZIP download.
 - Direct Google OAuth with offline access, state validation, S256 PKCE, a private masked credential handoff, and Sheets read/write adapters, layout inspection, dedicated PE worksheets, explicit legacy-column import preview, append-only revision history, conflict detection, atomic multi-sheet writes and idempotency receipts.
-- Conservative one-to-one activity matching, manual linking/unlinking, planned versus actual comparison; original Garmin metrics are never manually overwritten.
+- Conservative activity matching, timed one- or two-ride commute progress, intentional mixed-sport sessions, manual linking/unlinking and planned versus actual comparison. Original Garmin metrics are never manually overwritten.
 - Editable feedback journal and multiple race goals; default demo goal is 21.1 km in January 2027 with no invented race day. Longest-run progress is a distance milestone, not a readiness score.
 - Explainable session-RPE load where both recorded duration and a journal RPE exist, including cycling. Missing measurements remain missing.
 - 45-second active Sheets refresh, focus/reconnect revalidation, 10-minute active Garmin checks, sync on opening a stale live workspace, manual sync and optional authenticated scheduler endpoint.
@@ -158,7 +158,11 @@ Garmin checks on opening a stale live workspace and every 10 minutes while visib
 
 For an older backfill, authenticated clients can `POST /api/sync` with JSON `{ "start": "2026-01-01", "end": "2026-10-26" }` and the correct Origin header. Use smaller ranges for large accounts. The routine sync does not discover edits to very old activities outside its overlap window; run a backfill for those.
 
-Auto-matching requires the same Jakarta date, the same running/cycling sport, a distance or duration within 25% of a measured target, and a start time within 90 minutes when a target time exists. Both sides must be unique. Sessions without sufficient targets and ambiguous candidates remain unlinked. Only a recorded activity link or explicit user completion changes a plan to Completed. Unlinking restores a plan and keeps the original activity untouched. No workout intensity is automatically increased.
+Ordinary auto-matching requires the same Jakarta date, the same running/cycling sport, a distance or duration within 25% of a measured target, and a start time within 90 minutes when a target time exists. Candidates must be unique, including across different planned sessions. Manually partial sessions retain their partial status when an activity is linked.
+
+A Bike-to-Work plan can explicitly expect one ride or both the morning and return rides. A unique cycling activity within 90 minutes of a scheduled start can match an open-target commute. A two-ride plan needs a separate return start time for automatic return matching. One distinct ride produces Partially Completed; two produce Completed. Repeated syncs retain both links without counting a ride twice. Missing schedules or ambiguous evidence remain unlinked.
+
+Other combined sessions may expect two activities. Different sports require explicit Allow different sports on the same date. Manual selectors only offer activities and plans compatible with the date and allowed sports. This supports an intentional replacement such as a run plus family cycling without claiming strength training was recorded. Multiple activities share one link record with an activityIds array; activityId remains its first entry for older records. Unlinking clears associations and restores the plan while preserving Garmin measurements. No workout intensity is automatically increased.
 
 ### Optional unattended scheduler
 

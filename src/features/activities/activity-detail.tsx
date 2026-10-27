@@ -13,6 +13,12 @@ import {
 } from "lucide-react";
 import type { Activity, Workout } from "@/lib/domain";
 import {
+  activityIdsForLink,
+  expectedActivityCount,
+  activityFitsWorkout,
+  sport,
+} from "@/lib/domain";
+import {
   request,
   useTraining,
   useEditingDisabled,
@@ -46,8 +52,10 @@ export function ActivityDetail({ id }: { id: string }) {
         <Link href="/activities">Back to activity history</Link>
       </div>
     );
-  const link = data.links.find((l) => l.activityId === id);
+  const link = data.links.find((l) => activityIdsForLink(l).includes(id));
   const workout = data.workouts.find((w) => w.id === link?.workoutId);
+  const comparableTargets =
+    !workout?.allowMixedSports || sport(workout.type) === a.type;
   const feedback = data.feedback.find(
     (f) => f.activityId === id || f.workoutId === workout?.id,
   );
@@ -243,10 +251,28 @@ export function ActivityDetail({ id }: { id: string }) {
             <h2>{workout ? workout.title : "Connect the dots"}</h2>
             {workout ? (
               <>
+                {(workout.linkedActivityIds?.length ?? 0) > 1 ? (
+                  <div className="helper">
+                    <strong>Linked activities</strong>
+                    {workout.linkedActivityIds?.map((activityId) => (
+                      <p key={activityId}>
+                        <Link href={`/activities/${activityId}`}>
+                          {data.activities.find(
+                            (record) => record.id === activityId,
+                          )?.title ?? activityId}
+                        </Link>
+                      </p>
+                    ))}
+                    <p>Measurements below describe this recorded activity.</p>
+                  </div>
+                ) : null}
                 <div className="comparison">
                   <span>Distance</span>
                   <span>
-                    Planned <strong>{workout.distanceKm ?? "—"} km</strong>
+                    Planned{" "}
+                    <strong>
+                      {comparableTargets ? (workout.distanceKm ?? "—") : "—"} km
+                    </strong>
                   </span>
                   <span>
                     Actual <strong>{a.distanceKm?.toFixed(2) ?? "—"} km</strong>
@@ -255,13 +281,19 @@ export function ActivityDetail({ id }: { id: string }) {
                 <div className="comparison">
                   <span>Duration</span>
                   <span>
-                    Planned <strong>{workout.durationMin ?? "—"} min</strong>
+                    Planned{" "}
+                    <strong>
+                      {comparableTargets ? (workout.durationMin ?? "—") : "—"}{" "}
+                      min
+                    </strong>
                   </span>
                   <span>
                     Actual <strong>{duration(a.durationSec)}</strong>
                   </span>
                 </div>
-                {workout.distanceKm != null && a.distanceKm != null ? (
+                {comparableTargets &&
+                workout.distanceKm != null &&
+                a.distanceKm != null ? (
                   <p className="helper">
                     {a.distanceKm - workout.distanceKm >= 0 ? "+" : ""}
                     {(a.distanceKm - workout.distanceKm).toFixed(2)} km compared
@@ -288,7 +320,10 @@ export function ActivityDetail({ id }: { id: string }) {
                     {data.workouts
                       .filter(
                         (w) =>
-                          !w.linkedActivityId &&
+                          activityFitsWorkout(w, a) &&
+                          (!w.linkedActivityId ||
+                            (expectedActivityCount(w) === 2 &&
+                              (w.linkedActivityIds?.length ?? 0) < 2)) &&
                           w.status !== "Rescheduled" &&
                           w.status !== "Skipped" &&
                           w.type !== "Rest Day",
@@ -306,7 +341,7 @@ export function ActivityDetail({ id }: { id: string }) {
                   onClick={() => void linkActivity()}
                 >
                   <Link2 size={15} />
-                  {linking ? "Linking…" : "Link & confirm completion"}
+                  {linking ? "Linking…" : "Link recorded activity"}
                 </Button>
               </>
             )}

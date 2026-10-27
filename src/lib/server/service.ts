@@ -12,9 +12,16 @@ import {
   feedbackInput,
   goalInput,
   workoutInput,
+  activityIdsForLink,
+  activityFitsWorkout,
+  expectedActivityCount,
 } from "../domain";
 import { addDays, localDate } from "../dates";
-import { findMatches } from "../calculations";
+import {
+  findMatches,
+  findCommuteMatches,
+  uniqueActivityMatches,
+} from "../calculations";
 import { garmin } from "../garmin/client";
 import { type Change, type Snapshot, type Stored } from "../google-sheets/rows";
 import { configuration } from "./config";
@@ -65,13 +72,22 @@ const storedActivity = z.object({
 export function toData(snapshot: Snapshot, initialized: boolean): AppData {
   const config = configuration();
   const links = decode(snapshot.ActivityLinks, (v) =>
-    z.object({ workoutId: z.string(), activityId: z.string() }).parse(v),
+    z
+      .object({
+        workoutId: z.string(),
+        activityId: z.string(),
+        activityIds: z.array(z.string()).min(1).max(2).optional(),
+      })
+      .parse(v),
   ) as ActivityLink[];
   const workouts = decode(snapshot.Workouts, (v) =>
     storedWorkout.parse(v),
   ) as Workout[];
-  for (const w of workouts)
-    w.linkedActivityId = links.find((l) => l.workoutId === w.id)?.activityId;
+  for (const w of workouts) {
+    const link = links.find((l) => l.workoutId === w.id);
+    w.linkedActivityIds = link ? activityIdsForLink(link) : [];
+    w.linkedActivityId = w.linkedActivityIds[0];
+  }
   const syncRecord = snapshot.Meta.find((r) => r.id === "sync" && !r.deleted);
   const sync = syncRecord
     ? z
@@ -140,6 +156,7 @@ const actionSchema = z.discriminatedUnion("action", [
     id: z.string().max(100),
     revision: z.string(),
     activityId: z.string().max(100).nullable(),
+    activityIds: z.array(z.string().min(1).max(100)).max(2).optional(),
   }),
   z.object({
     action: z.literal("feedback"),
@@ -266,6 +283,13 @@ export async function mutate(input: unknown, op: string) {
           throw new AppError(
             "Unlink the recorded activity before changing completion status.",
           );
+        if (
+          w.linkedActivityId &&
+          expectedActivityCount(cmd.workout) !== expectedActivityCount(w)
+        )
+          throw new AppError(
+            "Unlink the recorded activities before changing the expected activity count.",
+          );
         changes.push({
           dataset: "Workouts",
           id: w.id,
@@ -330,7 +354,22 @@ export async function mutate(input: unknown, op: string) {
         );
       } else if (cmd.action === "link") {
         const old = data.links.find((l) => l.workoutId === w.id);
-        if (cmd.activityId) {
+        const legs = expectedActivityCount(w);
+        const ids = [
+          ...new Set(
+            cmd.activityIds ??
+              (cmd.activityId
+                ? legs === 2
+                  ? [...(w.linkedActivityIds ?? []), cmd.activityId]
+                  : [cmd.activityId]
+                : []),
+          ),
+        ];
+        if (ids.length > legs)
+          throw new AppError(
+            "This session has more linked activities than planned. Review its activity count.",
+          );
+        if (ids.length) {
           if (
             ["Rescheduled", "Skipped"].includes(w.status) ||
             w.type === "Rest Day"
@@ -338,11 +377,33 @@ export async function mutate(input: unknown, op: string) {
             throw new AppError(
               "Choose an active training session before linking.",
             );
-          if (!data.activities.some((a) => a.id === cmd.activityId))
+          if (ids.some((id) => !data.activities.some((a) => a.id === id)))
             throw new AppError("Activity not found.", 404);
           if (
+            ids.some((id) => {
+              const a = data.activities.find((a) => a.id === id)!;
+              return !activityFitsWorkout(w, a);
+            })
+          )
+            throw new AppError(
+              "Choose an activity from the same date and sport as this workout. Reschedule the plan first if its date changed.",
+            );
+          if (
+            w.type === "Bike-to-Work" &&
+            legs === 2 &&
+            ids.some((id) => {
+              const a = data.activities.find((a) => a.id === id)!;
+              return a.type !== "cycling" || a.date !== w.date;
+            })
+          )
+            throw new AppError(
+              "Choose cycling activities from the same date for this round-trip commute.",
+            );
+          if (
             data.links.some(
-              (l) => l.activityId === cmd.activityId && l.workoutId !== w.id,
+              (l) =>
+                activityIdsForLink(l).some((id) => ids.includes(id)) &&
+                l.workoutId !== w.id,
             )
           )
             throw new AppError(
@@ -353,7 +414,7 @@ export async function mutate(input: unknown, op: string) {
             dataset: "ActivityLinks",
             id: w.id,
             expected: expected(snapshot, "ActivityLinks", w.id),
-            payload: { workoutId: w.id, activityId: cmd.activityId },
+            payload: { workoutId: w.id, activityId: ids[0], activityIds: ids },
           });
         } else if (old)
           changes.push({
@@ -369,9 +430,15 @@ export async function mutate(input: unknown, op: string) {
           expected: w.revision,
           payload: payload({
             ...w,
-            status: cmd.activityId ? "Completed" : "Planned",
-            completionSource: cmd.activityId ? "garmin" : undefined,
+            status: ids.length
+              ? ids.length >= legs &&
+                !(legs === 1 && w.status === "Partially Completed")
+                ? "Completed"
+                : "Partially Completed"
+              : "Planned",
+            completionSource: ids.length ? "garmin" : undefined,
             linkedActivityId: undefined,
+            linkedActivityIds: undefined,
           }),
         });
       }
@@ -435,10 +502,31 @@ export async function syncGarmin(input: { start?: string; end?: string } = {}) {
               },
             ];
       });
-      const unlinked = activities.filter(
-        (a) => !data.links.some((l) => l.activityId === a.id),
-      );
-      for (const match of findMatches(data.workouts, unlinked)) {
+      const reserved = new Set(data.links.flatMap(activityIdsForLink));
+      const unlinked = activities.filter((a) => !reserved.has(a.id));
+      const knownActivities = [
+        ...new Map(
+          [...data.activities, ...activities].map((a) => [a.id, a]),
+        ).values(),
+      ];
+      const matches = uniqueActivityMatches([
+        ...findMatches(
+          data.workouts.filter(
+            (w) => w.type !== "Bike-to-Work" && expectedActivityCount(w) === 1,
+          ),
+          unlinked,
+        ).map((m) => ({
+          workoutId: m.workoutId,
+          activityIds: [m.activityId],
+          status:
+            data.workouts.find((w) => w.id === m.workoutId)?.status ===
+            "Partially Completed"
+              ? ("Partially Completed" as const)
+              : ("Completed" as const),
+        })),
+        ...findCommuteMatches(data.workouts, knownActivities, reserved),
+      ]);
+      for (const match of matches) {
         const w = data.workouts.find((w) => w.id === match.workoutId)!;
         changes.push(
           {
@@ -447,7 +535,7 @@ export async function syncGarmin(input: { start?: string; end?: string } = {}) {
             expected: w.revision,
             payload: payload({
               ...w,
-              status: "Completed",
+              status: match.status,
               completionSource: "garmin",
             }),
           },
@@ -455,7 +543,11 @@ export async function syncGarmin(input: { start?: string; end?: string } = {}) {
             dataset: "ActivityLinks",
             id: w.id,
             expected: expected(snapshot, "ActivityLinks", w.id),
-            payload: payload(match),
+            payload: {
+              workoutId: w.id,
+              activityId: match.activityIds[0],
+              activityIds: match.activityIds,
+            },
           },
         );
       }

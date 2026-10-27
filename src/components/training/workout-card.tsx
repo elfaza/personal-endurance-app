@@ -7,7 +7,7 @@ import {
   Footprints,
   Timer,
 } from "lucide-react";
-import type { Workout } from "@/lib/domain";
+import { expectedActivityCount, type Workout } from "@/lib/domain";
 import { dateLabel } from "@/lib/dates";
 export function SportIcon({
   type,
@@ -56,6 +56,13 @@ export function WorkoutCard({
         {w.optional ? " · Optional" : ""}
       </span>
       <strong>{w.title}</strong>
+      {expectedActivityCount(w) === 2 &&
+      (w.linkedActivityIds?.length ?? 0) > 0 ? (
+        <span className="commute-progress">
+          {w.linkedActivityIds?.length} of 2{" "}
+          {w.type === "Bike-to-Work" ? "rides" : "activities"} completed
+        </span>
+      ) : null}
       <div className="workout-meta">
         {!rest ? (
           <>

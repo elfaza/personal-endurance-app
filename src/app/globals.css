@@ -1125,6 +1125,12 @@ main#main {
   margin: 13px 0 15px;
   flex-wrap: wrap;
 }
+.commute-progress {
+  color: var(--accent-soft);
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 7px;
+}
 .workout-meta > span {
   display: flex;
   align-items: center;

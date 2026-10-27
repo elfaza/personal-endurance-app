@@ -38,6 +38,14 @@ export const workoutInput = z.object({
   rpe: z.number().int().min(1).max(10).nullable().default(null),
   status: z.enum(statuses).default("Planned"),
   optional: z.boolean().default(false),
+  commuteLegs: z.union([z.literal(1), z.literal(2)]).optional(),
+  activityCount: z.union([z.literal(1), z.literal(2)]).optional(),
+  allowMixedSports: z.boolean().optional(),
+  commuteReturnTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .optional()
+    .or(z.literal("")),
   notes: z.string().max(4000).default(""),
 });
 export type WorkoutInput = z.infer<typeof workoutInput>;
@@ -48,6 +56,7 @@ export type Workout = WorkoutInput & {
   rescheduledFrom?: string;
   rescheduledTo?: string;
   linkedActivityId?: string;
+  linkedActivityIds?: string[];
   completionSource?: "manual" | "garmin";
 };
 export const feedbackInput = z.object({
@@ -101,7 +110,33 @@ export interface ActivityLink {
   id: string;
   workoutId: string;
   activityId: string;
+  activityIds?: string[];
   revision: string;
+}
+export function activityIdsForLink(
+  link: Pick<ActivityLink, "activityId" | "activityIds">,
+) {
+  return link.activityIds ?? [link.activityId];
+}
+export function expectedActivityCount(
+  w: Pick<Workout, "type" | "commuteLegs" | "activityCount">,
+) {
+  return w.type === "Bike-to-Work"
+    ? (w.commuteLegs ?? 1)
+    : (w.activityCount ?? 1);
+}
+export function activityFitsWorkout(
+  w: Pick<Workout, "date" | "type" | "allowMixedSports">,
+  a: Pick<Activity, "date" | "type">,
+) {
+  return (
+    a.date === w.date &&
+    (w.type === "Bike-to-Work"
+      ? a.type === "cycling"
+      : w.allowMixedSports ||
+        sport(w.type) === "other" ||
+        sport(w.type) === a.type)
+  );
 }
 export interface SyncState {
   lastSuccess: string | null;

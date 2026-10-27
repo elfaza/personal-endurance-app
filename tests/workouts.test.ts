@@ -111,9 +111,20 @@ describe("workout persistence", () => {
   });
   it("links and unlinks activities without altering Garmin metrics", async () => {
     const id = randomUUID();
-    await mutate({ action: "create", id, workout: input() }, randomUUID());
+    const a = (await getData()).activities[0];
+    await mutate(
+      {
+        action: "create",
+        id,
+        workout: {
+          ...input(),
+          date: a.date,
+          type: a.type === "cycling" ? "Cycling" : "Easy Run",
+        },
+      },
+      randomUUID(),
+    );
     let data = await getData();
-    const a = data.activities[0];
     const linked = data.links.find((l) => l.activityId === a.id)!;
     const original = data.workouts.find((w) => w.id === linked.workoutId)!;
     await mutate(

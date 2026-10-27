@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import { demoData } from "@/lib/demo";
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (e) => console.log("BROWSER ERROR", e.message));
   page.on("console", (m) => {
@@ -8,6 +9,113 @@ test.beforeEach(async ({ page }) => {
   page.on("requestfailed", (r) =>
     console.log("FAILED REQUEST", r.url(), r.failure()?.errorText),
   );
+});
+
+test("round-trip progress stays partial and the editor adds only a compatible return ride", async ({
+  page,
+}) => {
+  const fixture = demoData("2026-10-27");
+  const template = fixture.workouts.find((w) => w.type === "Bike-to-Work")!;
+  const commute = {
+    ...template,
+    id: "browser-commute",
+    date: "2026-10-27",
+    title: "Commute progress test",
+    time: "05:45",
+    commuteLegs: 2 as const,
+    commuteReturnTime: "16:30",
+    status: "Partially Completed" as const,
+    completionSource: "garmin" as const,
+    linkedActivityId: "am",
+    linkedActivityIds: ["am"],
+  };
+  const activity = fixture.activities.find((a) => a.type === "cycling")!;
+  fixture.workouts = [commute];
+  fixture.activities = [
+    {
+      ...activity,
+      id: "am",
+      title: "Morning commute",
+      date: commute.date,
+      startedAt: "2026-10-26T22:33:41Z",
+    },
+    {
+      ...activity,
+      id: "pm",
+      title: "Return commute",
+      date: commute.date,
+      startedAt: "2026-10-27T09:35:00Z",
+    },
+    {
+      ...activity,
+      id: "wrong-sport",
+      title: "Other run",
+      type: "running",
+      date: commute.date,
+    },
+  ];
+  fixture.links = [
+    {
+      id: commute.id,
+      revision: "test",
+      workoutId: commute.id,
+      activityId: "am",
+      activityIds: ["am"],
+    },
+  ];
+  const posted: Record<string, unknown>[] = [];
+  await page.route("**/api/data", (route) => route.fulfill({ json: fixture }));
+  await page.route("**/api/training", (route) => {
+    posted.push(route.request().postDataJSON());
+    return route.fulfill({ json: { ok: true } });
+  });
+  await page.goto("/calendar");
+  await page.getByLabel("Go to date").fill(commute.date);
+  const card = page.locator(".workout-card").filter({ hasText: commute.title });
+  await expect(card).toContainText("1 of 2 rides completed");
+  await card.click();
+  await page
+    .getByLabel("Personal notes")
+    .fill("Morning ride done; return later.");
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  expect(posted[0].workout).toMatchObject({
+    status: "Partially Completed",
+    commuteLegs: 2,
+    commuteReturnTime: "16:30",
+    notes: "Morning ride done; return later.",
+  });
+  await card.click();
+  await page.getByRole("tab", { name: "Activity", exact: true }).click();
+  const select = page.getByLabel("Recorded activity");
+  await expect(select.locator("option")).toHaveCount(2);
+  await select.selectOption("pm");
+  await page
+    .getByRole("button", { name: "Save activity link", exact: true })
+    .click();
+  expect(posted[1]).toMatchObject({
+    action: "link",
+    activityIds: ["am", "pm"],
+  });
+  fixture.links[0].activityIds = ["am", "pm"];
+  fixture.workouts[0] = {
+    ...commute,
+    status: "Completed",
+    linkedActivityIds: ["am", "pm"],
+  };
+  await page.route("**/api/activities/pm", (route) =>
+    route.fulfill({ json: fixture.activities[1] }),
+  );
+  await page.goto("/activities/pm");
+  await expect(
+    page.getByRole("heading", { name: commute.title, exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Linked activities", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Morning commute", exact: true }),
+  ).toBeVisible();
 });
 test("dashboard renders, navigation works, and mobile stays within the viewport", async ({
   page,

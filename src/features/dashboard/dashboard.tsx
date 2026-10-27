@@ -78,7 +78,10 @@ export function Dashboard() {
         );
   const upcoming = data.workouts
     .filter(
-      (w) => w.date >= today && w.status === "Planned" && w.type !== "Rest Day",
+      (w) =>
+        w.date >= today &&
+        (w.status === "Planned" || w.status === "Partially Completed") &&
+        w.type !== "Rest Day",
     )
     .toSorted((a, b) =>
       `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`),
