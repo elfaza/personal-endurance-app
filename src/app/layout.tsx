@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./comfort.css";
 export const metadata: Metadata = {
   title: { default: "Personal Endurance", template: "%s · Personal Endurance" },
   description:
@@ -16,7 +17,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#101312",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f3f6f8" },
+    { media: "(prefers-color-scheme: dark)", color: "#171d25" },
+  ],
 };
 export default function RootLayout({
   children,
@@ -25,6 +29,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          id="theme-init"
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('pe.theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

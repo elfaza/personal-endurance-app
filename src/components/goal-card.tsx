@@ -71,21 +71,11 @@ export function GoalCard({
             {goal ? <Pencil size={15} /> : <Plus size={17} />}
           </button>
         </div>
-        <div
-          className="goal-ring"
-          style={{ "--progress": `${percent}%` } as React.CSSProperties}
-        >
-          <div>
-            <span>
-              {goal?.distanceKm ?? 21.1}
-              <small>KM</small>
-            </span>
-            <span className="muted">
-              {goal ? "THE GOAL" : "YOUR NEXT GOAL"}
-            </span>
-          </div>
-        </div>
         <h3>{goal?.title ?? "Something to run toward"}</h3>
+        <div className="goal-distance">
+          {goal?.distanceKm ?? 21.1}
+          <span>km</span>
+        </div>
         <p>
           {goal
             ? goal.date

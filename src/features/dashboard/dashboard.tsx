@@ -30,7 +30,11 @@ import {
   weekStart,
 } from "@/lib/dates";
 import { summarize, weeklySeries } from "@/lib/calculations";
-import type { Workout } from "@/lib/domain";
+import {
+  activityIdsForLink,
+  expectedActivityCount,
+  type Workout,
+} from "@/lib/domain";
 const TrainingChart = dynamic(
   () =>
     import("@/components/charts/training-chart").then((m) => m.TrainingChart),
@@ -87,6 +91,25 @@ export function Dashboard() {
       `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`),
     );
   const next = upcoming[0];
+  const focus =
+    upcoming.find((w) => w.date === today) ??
+    data.workouts.find(
+      (w) =>
+        w.date === today && w.type !== "Rest Day" && w.status === "Completed",
+    ) ??
+    next;
+  const focusLink = data.links.find((l) => l.workoutId === focus?.id);
+  const recorded = focusLink
+    ? data.activities.filter((a) =>
+        activityIdsForLink(focusLink).includes(a.id),
+      )
+    : [];
+  const actualKm = recorded.some((a) => a.distanceKm != null)
+    ? recorded.reduce((n, a) => n + (a.distanceKm ?? 0), 0)
+    : null;
+  const actualSeconds = recorded.some((a) => a.durationSec != null)
+    ? recorded.reduce((n, a) => n + (a.durationSec ?? 0), 0)
+    : null;
   const recent = data.activities
     .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt))
     .slice(0, 3);
@@ -112,107 +135,134 @@ export function Dashboard() {
         <div>
           <div className="eyebrow">YOUR PERSONAL TRAINING SPACE</div>
           <h1>
-            Let’s keep moving<span className="accent">.</span>
+            Your training overview<span className="accent">.</span>
           </h1>
-          <p>A little consistency today. A stronger tomorrow.</p>
+          <p>Today’s session and this week’s progress, in one place.</p>
         </div>
         <Button onClick={() => edit()} disabled={editingDisabled}>
           <Plus size={17} />
           Plan a workout
         </Button>
       </div>
-      <section className="dashboard-hero">
-        <div className="hero-copy">
-          <span className="hero-tag">
-            <span /> THE JOURNEY TO 21.1
-          </span>
-          <h2>
-            Built one day
-            <br />
-            at a time.
-          </h2>
-          <p>
-            Every easy mile. Every ride to work.
-            <br />
-            They’re all part of your next starting line.
-          </p>
-          <Link href="/calendar">
-            Make today count <ArrowUpRight size={17} />
-          </Link>
-          <div className="hero-mark">
-            01 <span>CONSISTENCY OVER PERFECTION</span>
+      <div className="training-focus-grid">
+        <section
+          className="panel session-focus"
+          aria-label="Featured training session"
+        >
+          <div className="focus-heading">
+            <h2>{focus?.date === today ? "Today’s session" : "Up next"}</h2>
+            <CalendarDays size={20} aria-hidden="true" />
           </div>
-        </div>
-        <div className="hero-art" aria-hidden="true">
-          <svg viewBox="0 0 560 310" fill="none">
-            {Array.from({ length: 11 }, (_, i) => (
-              <path
-                key={i}
-                d={`M${-30 + i * 6} ${280 - i * 5} C ${100 + i * 9} ${305 - i * 17}, ${150 + i * 2} ${10 + i * 13}, ${300 + i * 6} ${54 + i * 8} S ${430 + i * 7} ${290 - i * 5}, ${600 + i * 4} ${20 + i * 6}`}
-                stroke="currentColor"
-                strokeWidth={i === 5 ? 2 : 1}
-                opacity={i === 5 ? 0.9 : 0.2 + i * 0.025}
-              />
-            ))}
-            <circle cx="282" cy="109" r="6" fill="currentColor" />
-            <circle
-              cx="282"
-              cy="109"
-              r="18"
-              stroke="currentColor"
-              strokeOpacity=".4"
-            />
-          </svg>
-          <span>FIND YOUR OWN PACE</span>
-        </div>
-        <div className="today-card">
-          <span className="eyebrow">
-            <CalendarDays size={13} />
-            {next?.date === today ? "ON YOUR PLAN TODAY" : "UP NEXT"}
-          </span>
-          {next ? (
+          {focus ? (
             <>
-              <div className="today-card-type">
-                <SportIcon type={next.type} size={24} />
-                <span>{next.type}</span>
-              </div>
-              <h3>
-                {next.distanceKm ?? next.durationMin ?? "Open"}
-                <span>
-                  {next.distanceKm
-                    ? "km"
-                    : next.durationMin
-                      ? "min"
-                      : "session"}
+              <div className="focus-session">
+                <span
+                  className={`sport-icon ${/Bike|Cycl/.test(focus.type) ? "purple" : "lime"}`}
+                >
+                  <SportIcon type={focus.type} size={28} />
                 </span>
-              </h3>
-              <p>
-                {dateLabel(next.date, {
+                <div>
+                  <h3>{focus.title}</h3>
+                  <span
+                    className={`status-badge status-${focus.status.toLowerCase().replaceAll(" ", "-")}`}
+                  >
+                    {focus.status}
+                  </span>
+                  {expectedActivityCount(focus) === 2 && recorded.length > 0 ? (
+                    <p className="focus-progress">
+                      {recorded.length} of 2{" "}
+                      {focus.type === "Bike-to-Work" ? "rides" : "activities"}{" "}
+                      completed
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <p className="focus-schedule">
+                {dateLabel(focus.date, {
                   weekday: "long",
                   day: "numeric",
                   month: "short",
                 })}
-                {next.time ? ` · ${next.time}` : ""}
+                {focus.time ? ` · ${focus.time} WIB` : ""}
+                {focus.status === "Partially Completed" &&
+                focus.commuteLegs === 2 &&
+                focus.commuteReturnTime ? (
+                  <span>
+                    Return ride planned for {focus.commuteReturnTime} WIB
+                  </span>
+                ) : null}
               </p>
-              <button onClick={() => edit(next)}>
-                View session <ArrowRight size={16} />
-              </button>
+              <div className="focus-bottom">
+                <div className="session-facts">
+                  {actualKm != null ? (
+                    <span>
+                      <Footprints size={17} />
+                      <strong>{actualKm.toFixed(1)} km</strong> recorded
+                    </span>
+                  ) : focus.distanceKm != null ? (
+                    <span>
+                      <Footprints size={17} />
+                      <strong>{focus.distanceKm} km</strong> target
+                    </span>
+                  ) : null}
+                  {actualSeconds != null ? (
+                    <span>
+                      <Timer size={17} />
+                      <strong>{duration(actualSeconds)}</strong> recorded
+                    </span>
+                  ) : focus.durationMin != null || focus.durationText ? (
+                    <span>
+                      <Timer size={17} />
+                      <strong>
+                        {focus.durationMin ?? focus.durationText} min
+                      </strong>{" "}
+                      target
+                    </span>
+                  ) : null}
+                </div>
+                <Button onClick={() => edit(focus)}>
+                  View session <ArrowRight size={17} />
+                </Button>
+              </div>
             </>
           ) : (
-            <>
-              <h3>
-                Room to
-                <br />
-                recharge.
-              </h3>
-              <p>No upcoming session. Your next step is yours.</p>
-              <button onClick={() => edit()}>
-                Plan a session <Plus size={16} />
-              </button>
-            </>
+            <div className="focus-empty">
+              <h3>Room to recharge.</h3>
+              <p>
+                No upcoming session. Plan your next workout when you’re ready.
+              </p>
+              <Button onClick={() => edit()} disabled={editingDisabled}>
+                <Plus size={17} />
+                Plan a session
+              </Button>
+            </div>
           )}
-        </div>
-      </section>
+        </section>
+        <section className="panel week-focus">
+          <div className="focus-heading">
+            <h2>This week</h2>
+            <span>
+              {consistencyPlans.filter((w) => w.status === "Completed").length}{" "}
+              / {consistencyPlans.length} sessions done
+            </span>
+          </div>
+          <progress
+            value={
+              consistencyPlans.filter((w) => w.status === "Completed").length
+            }
+            max={Math.max(1, consistencyPlans.length)}
+            aria-label="Required sessions completed this week"
+          />
+          <p>
+            {consistencyPlans.length
+              ? "Your required sessions, based on the current training plan."
+              : "Your weekly sessions will appear here once planned."}
+          </p>
+          <Link className="text-link" href="/calendar">
+            Open calendar <ArrowRight size={17} />
+          </Link>
+        </section>
+      </div>
       <div className="section-heading">
         <h2>Your training, at a glance</h2>
         <DateFilter value={range} onChange={setRange} />
@@ -220,7 +270,7 @@ export function Dashboard() {
       <div className="metrics-grid">
         <Metric
           icon={<Footprints size={19} />}
-          label="RUNNING DISTANCE"
+          label="Running distance"
           value={metrics.runningKm.toFixed(1)}
           unit="km"
           note={change(metrics.runningKm, previous.runningKm)}
@@ -228,7 +278,7 @@ export function Dashboard() {
         />
         <Metric
           icon={<Bike size={19} />}
-          label="CYCLING DISTANCE"
+          label="Cycling distance"
           value={metrics.cyclingKm.toFixed(1)}
           unit="km"
           note={change(metrics.cyclingKm, previous.cyclingKm)}
@@ -236,15 +286,15 @@ export function Dashboard() {
         />
         <Metric
           icon={<Check size={19} />}
-          label="WORKOUTS COMPLETED"
-          value={String(metrics.completed).padStart(2, "0")}
+          label="Workouts completed"
+          value={String(metrics.completed)}
           unit={`/ ${metrics.planned}`}
           note="Confirmed or linked to an activity"
           color="peach"
         />
         <Metric
           icon={<TrendingUp size={19} />}
-          label="TRAINING CONSISTENCY"
+          label="Training consistency"
           value={
             metrics.consistency == null ? "—" : String(metrics.consistency)
           }
@@ -271,6 +321,7 @@ export function Dashboard() {
                 <button
                   key={v}
                   className={chart === v ? "active" : ""}
+                  aria-pressed={chart === v}
                   onClick={() => setChart(v)}
                 >
                   {label}

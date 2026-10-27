@@ -185,13 +185,13 @@ test("dashboard renders, navigation works, and mobile stays within the viewport"
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/dashboard");
   await expect(
-    page.getByRole("heading", { name: "Let’s keep moving." }),
+    page.getByRole("heading", { name: "Your training overview." }),
   ).toBeVisible();
   await expect(
     page.getByText("Sample training data.", { exact: false }),
   ).toBeVisible();
   await expect(
-    page.getByText("RUNNING DISTANCE", { exact: true }),
+    page.getByText("Running distance", { exact: true }),
   ).toBeVisible();
   await expect(page.locator(".training-chart .recharts-surface")).toBeVisible();
   await page.screenshot({
@@ -214,7 +214,7 @@ test("dashboard renders, navigation works, and mobile stays within the viewport"
     page.getByRole("navigation", { name: "Mobile navigation" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Let’s keep moving." }),
+    page.getByRole("heading", { name: "Your training overview." }),
   ).toBeVisible();
   await expect(page.locator(".training-chart .recharts-surface")).toBeVisible();
   await page.screenshot({
@@ -337,9 +337,10 @@ test("activity details, chart filters and preferences have working controls", as
     page.getByRole("heading", { name: "Session training load" }),
   ).toBeVisible();
   await page.goto("/settings");
+  await page.getByRole("button", { name: "Switch to dark" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "Switch to light" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.getByRole("button", { name: "Switch to dark" }).click();
   await page.getByRole("switch", { name: "Offline reading" }).click();
   await expect(
     page.getByRole("switch", { name: "Offline reading" }),
@@ -354,12 +355,12 @@ test("PWA assets and offline fallback read the saved training snapshot", async (
 }) => {
   await page.goto("/dashboard");
   await expect(
-    page.getByText("RUNNING DISTANCE", { exact: true }),
+    page.getByText("Running distance", { exact: true }),
   ).toBeVisible();
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload();
   await expect(
-    page.getByText("RUNNING DISTANCE", { exact: true }),
+    page.getByText("Running distance", { exact: true }),
   ).toBeVisible();
   const manifest = await (
     await page.request.get("/manifest.webmanifest")

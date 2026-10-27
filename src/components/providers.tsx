@@ -110,12 +110,6 @@ export function Providers({ children }: { children: ReactNode }) {
     window.addEventListener("offline", update);
     if ("serviceWorker" in navigator)
       navigator.serviceWorker.register("/sw.js").catch(() => {});
-    try {
-      const theme = localStorage.getItem("pe.theme");
-      if (theme === "light") document.documentElement.dataset.theme = "light";
-    } catch {
-      /* Private browser storage can be unavailable. */
-    }
     return () => {
       window.removeEventListener("online", update);
       window.removeEventListener("offline", update);

@@ -7,38 +7,62 @@
   --font-sans: "Inter", "Segoe UI", sans-serif;
 }
 :root {
-  color-scheme: dark;
-  --bg: #101312;
-  --sidebar: #121614;
-  --panel: #191d1a;
-  --panel-hover: #1e2420;
-  --text: #edf0e9;
-  --muted: #919b92;
-  --soft: #b9c1b7;
-  --line: #2b332c;
-  --accent: #c5f576;
-  --accent-soft: #a5c779;
-  --purple: #a6a9e5;
-  --peach: #e5b49b;
-  --blue: #a0c0cc;
-  --shadow: 0 20px 70px #0005;
-}
-:root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f2f4ee;
-  --sidebar: #e9eee4;
-  --panel: #fff;
-  --panel-hover: #f0f4e9;
-  --text: #182117;
-  --muted: #62705e;
-  --soft: #4d5b47;
-  --line: #dce3d6;
-  --accent: #c5f576;
-  --accent-soft: #51782b;
-  --purple: #6666ac;
-  --peach: #b97853;
-  --blue: #4d7d8a;
-  --shadow: 0 20px 70px #15251012;
+  --bg: #f3f6f8;
+  --sidebar: #ffffff;
+  --panel: #ffffff;
+  --panel-hover: #edf2f7;
+  --text: #192b3a;
+  --muted: #526576;
+  --soft: #3f5365;
+  --line: #dce4ec;
+  --control-border: #7d8f9f;
+  --accent: #245fad;
+  --accent-soft: #245fad;
+  --accent-hover: #1c4e92;
+  --accent-subtle: #e8f0fc;
+  --on-accent: #ffffff;
+  --running: #087970;
+  --purple: #5364b8;
+  --peach: #805400;
+  --blue: #245fad;
+  --success: #096c55;
+  --success-bg: #e3f4ed;
+  --warning: #805400;
+  --warning-bg: #fff3d6;
+  --danger: #b42338;
+  --danger-bg: #fff0f2;
+  --chart-planned: #66788b;
+  --shadow: 0 4px 18px #192b3a08;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #171d25;
+  --sidebar: #1c2430;
+  --panel: #232e3b;
+  --panel-hover: #2b3949;
+  --text: #edf2f7;
+  --muted: #b2c0cf;
+  --soft: #c5d0dd;
+  --line: #415063;
+  --control-border: #74869b;
+  --accent: #8bb9f4;
+  --accent-soft: #8bb9f4;
+  --accent-hover: #a6cafa;
+  --accent-subtle: #283e58;
+  --on-accent: #132d4c;
+  --running: #78c8bb;
+  --purple: #a7b5f7;
+  --peach: #ffd183;
+  --blue: #8bb9f4;
+  --success: #84d4b7;
+  --success-bg: #203f3b;
+  --warning: #ffd183;
+  --warning-bg: #44391f;
+  --danger: #ffacb7;
+  --danger-bg: #432732;
+  --chart-planned: #b2c0cf;
+  --shadow: 0 4px 18px #00000012;
 }
 * {
   box-sizing: border-box;
@@ -47,7 +71,12 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: Arial, "Segoe UI", sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -108,7 +137,7 @@ p {
   line-height: 1.65;
 }
 ::selection {
-  background: #c5f57644;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 :focus-visible {
   outline: 2px solid var(--accent-soft);
@@ -133,7 +162,7 @@ fieldset {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 1.65px;
   color: var(--muted);
@@ -162,7 +191,7 @@ fieldset {
   gap: 9px;
   border: 1px solid transparent;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.2;
   font-weight: 600;
   padding: 11px 16px;
@@ -176,10 +205,10 @@ fieldset {
 }
 .btn-primary {
   background: var(--accent);
-  color: #1e2c14;
+  color: var(--on-accent);
 }
 .btn-primary:hover {
-  background: #d4fa9a;
+  background: var(--accent-hover);
 }
 .btn-outline {
   background: transparent;
@@ -201,7 +230,7 @@ fieldset {
 .btn-sm {
   min-height: 34px;
   padding: 8px 11px;
-  font-size: 11px;
+  font-size: 14px;
 }
 .btn-icon {
   width: 36px;
@@ -236,7 +265,7 @@ fieldset {
   left: 20px;
   top: -100px;
   background: var(--accent);
-  color: #192416;
+  color: var(--on-accent);
   z-index: 100;
   padding: 10px;
 }
@@ -276,18 +305,18 @@ fieldset {
   height: 39px;
   border-radius: 11px;
   background: var(--accent);
-  color: #243617;
+  color: var(--on-accent);
 }
 .brand-sub {
   display: block;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 3.5px;
   color: var(--soft);
   margin-top: 5px;
 }
 .nav-label {
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.6px;
   color: var(--muted);
   margin: 58px 10px 18px;
@@ -302,7 +331,7 @@ fieldset {
   align-items: center;
   gap: 12px;
   padding: 13px 14px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   border-radius: 8px;
   transition: 0.15s;
@@ -312,7 +341,7 @@ fieldset {
   color: var(--text);
 }
 .nav-item.active {
-  background: #c5f57612;
+  background: var(--accent-subtle);
   color: var(--accent-soft);
   font-weight: 600;
 }
@@ -329,14 +358,14 @@ fieldset {
 .sidebar-note {
   margin: 50px 4px 28px;
   padding: 19px 16px;
-  background: linear-gradient(140deg, #c5f57609, transparent);
+  background: linear-gradient(140deg, var(--accent-subtle), transparent);
   border: 1px solid var(--line);
   border-radius: 10px;
   position: relative;
   overflow: hidden;
 }
 .sidebar-note > .eyebrow {
-  font-size: 8px;
+  font-size: 12px;
 }
 .sidebar-note > svg {
   position: absolute;
@@ -352,7 +381,7 @@ fieldset {
   margin: 21px 0 23px;
 }
 .sidebar-note a {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--accent-soft);
   display: flex;
   gap: 12px;
@@ -371,21 +400,21 @@ fieldset {
   border-radius: 50%;
   width: 34px;
   height: 34px;
-  background: #9ead8930;
+  background: var(--accent-subtle);
   color: var(--soft);
-  font-size: 10px;
+  font-size: 13px;
 }
 .profile div {
   flex: 1;
 }
 .profile strong {
   display: block;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 500;
 }
 .profile div span {
   display: block;
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
   margin-top: 3px;
 }
@@ -408,7 +437,7 @@ fieldset {
   display: flex;
   align-items: center;
   gap: 13px;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
 }
 .breadcrumb span {
@@ -420,14 +449,14 @@ fieldset {
   gap: 22px;
 }
 .today-date {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--soft);
 }
 .sync-indicator {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
 }
 .sync-indicator > span {
@@ -435,7 +464,7 @@ fieldset {
   height: 5px;
   background: var(--accent-soft);
   border-radius: 50%;
-  box-shadow: 0 0 0 3px #c5f5760d;
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 .sync-indicator.is-offline > span {
   background: var(--peach);
@@ -451,7 +480,7 @@ main#main {
   align-items: center;
   gap: 8px;
   padding: 13px 0 0;
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
   min-height: 38px;
   flex-wrap: wrap;
@@ -483,13 +512,13 @@ main#main {
   padding: 29px 0 28px;
 }
 .page-heading .eyebrow {
-  font-size: 9px;
+  font-size: 13px;
   margin-bottom: 10px;
   letter-spacing: 1.6px;
 }
 .page-heading p {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 9px;
 }
 .dashboard-hero {
@@ -512,7 +541,7 @@ main#main {
   min-width: 41%;
 }
 .hero-tag {
-  font-size: 8px;
+  font-size: 12px;
   color: #c0d3aa;
   letter-spacing: 2px;
   display: flex;
@@ -533,7 +562,7 @@ main#main {
   margin: 19px 0 13px;
 }
 .hero-copy p {
-  font-size: 11px;
+  font-size: 14px;
   color: #a7b39f;
   line-height: 1.7;
 }
@@ -541,20 +570,20 @@ main#main {
   display: flex;
   align-items: center;
   gap: 17px;
-  font-size: 11px;
+  font-size: 14px;
   margin-top: 19px;
   color: #d4efb7;
 }
 .hero-mark {
   margin-top: 28px;
-  font-size: 10px;
+  font-size: 13px;
   color: #a9bd98;
   display: flex;
   gap: 10px;
   align-items: center;
 }
 .hero-mark span {
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 1.8px;
   opacity: 0.7;
 }
@@ -576,7 +605,7 @@ main#main {
   position: absolute;
   bottom: 23px;
   right: 31%;
-  font-size: 6px;
+  font-size: 12px;
   letter-spacing: 2.2px;
   color: #acc496;
 }
@@ -594,7 +623,7 @@ main#main {
 }
 .today-card > .eyebrow {
   color: #9cac90;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.2px;
 }
 .today-card-type {
@@ -603,7 +632,7 @@ main#main {
   gap: 9px;
   margin: 24px 0 6px;
   color: #c9e8aa;
-  font-size: 11px;
+  font-size: 14px;
 }
 .today-card h3 {
   font-size: 47px;
@@ -618,7 +647,7 @@ main#main {
   color: #b3c1a8;
 }
 .today-card > p {
-  font-size: 10px;
+  font-size: 13px;
   color: #a2af99;
   margin-top: 10px;
 }
@@ -632,7 +661,7 @@ main#main {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  font-size: 10px;
+  font-size: 13px;
   color: #d2e5bc;
 }
 .section-heading {
@@ -647,12 +676,12 @@ main#main {
   font-size: 17px;
 }
 .section-heading p {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 6px;
 }
 .section-heading > .muted {
-  font-size: 10px;
+  font-size: 13px;
 }
 .date-filter {
   display: flex;
@@ -664,13 +693,13 @@ main#main {
   padding: 0 10px;
   color: var(--soft);
   background: var(--panel);
-  font-size: 10px;
+  font-size: 13px;
   flex-wrap: wrap;
 }
 .date-filter select {
   border: 0;
   background: transparent;
-  font-size: 10px;
+  font-size: 13px;
   min-height: 32px;
   padding: 0 16px 0 0;
   color: var(--soft);
@@ -682,7 +711,7 @@ main#main {
   gap: 8px;
 }
 .custom-dates input {
-  font-size: 10px;
+  font-size: 13px;
   padding: 4px;
   min-height: 30px;
   width: 115px;
@@ -703,7 +732,7 @@ main#main {
   gap: 7px;
 }
 .metric-label > span:first-child {
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.05px;
   font-weight: 600;
   color: var(--soft);
@@ -732,7 +761,7 @@ main#main {
   margin-left: 7px;
 }
 .metric-note {
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
   line-height: 1.6;
 }
@@ -756,7 +785,7 @@ main#main {
   margin-top: 7px;
 }
 .section-title .eyebrow {
-  font-size: 8px;
+  font-size: 12px;
 }
 .segmented {
   display: inline-flex;
@@ -767,7 +796,7 @@ main#main {
   flex-shrink: 0;
 }
 .segmented button {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   padding: 7px 17px;
   background: transparent;
@@ -780,7 +809,7 @@ main#main {
   box-shadow: 0 1px 3px #0002;
 }
 .segmented.small button {
-  font-size: 9px;
+  font-size: 13px;
   padding: 6px 10px;
 }
 .chart-summary {
@@ -796,14 +825,14 @@ main#main {
   letter-spacing: -0.7px;
 }
 .chart-summary strong > span {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   font-weight: 400;
   letter-spacing: 0;
   margin-left: 8px;
 }
 .chart-summary > .muted {
-  font-size: 9px;
+  font-size: 13px;
 }
 .training-chart {
   height: 205px;
@@ -824,7 +853,7 @@ main#main {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
 }
 .dot {
@@ -837,7 +866,7 @@ main#main {
 }
 .dash {
   width: 13px;
-  border-top: 1px dashed #7b8388;
+  border-top: 1px dashed var(--chart-planned);
 }
 .goal-card {
   padding: 24px;
@@ -848,7 +877,7 @@ main#main {
   margin-bottom: 4px;
 }
 .goal-card .eyebrow {
-  font-size: 8px;
+  font-size: 12px;
 }
 .goal-ring {
   --progress: 0%;
@@ -885,14 +914,14 @@ main#main {
   letter-spacing: -1.5px;
 }
 .goal-ring small {
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 1px;
   margin-left: 5px;
   color: var(--muted);
 }
 .goal-ring > div > .muted {
   display: block;
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 2px;
   margin-top: 4px;
 }
@@ -901,7 +930,7 @@ main#main {
   letter-spacing: -0.3px;
 }
 .goal-card > p {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   margin-top: 6px;
 }
@@ -910,17 +939,17 @@ main#main {
   justify-content: space-between;
   gap: 8px;
   margin: 23px 0 8px;
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
 }
 .goal-progress-text strong {
   color: var(--text);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 500;
 }
 .goal-progress-text strong > span {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 13px;
 }
 .progress-track {
   height: 4px;
@@ -934,7 +963,7 @@ main#main {
   background: var(--accent-soft);
 }
 .goal-card > .goal-footnote {
-  font-size: 8px;
+  font-size: 12px;
   text-align: left;
   line-height: 1.6;
   margin-top: 14px;
@@ -946,7 +975,7 @@ main#main {
   display: inline-flex;
   gap: 7px;
   align-items: center;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--soft);
 }
 .text-link:hover {
@@ -975,7 +1004,7 @@ main#main {
   background: var(--panel-hover);
 }
 .week-day.is-today {
-  background: #c5f57607;
+  background: var(--accent-subtle);
   box-shadow: inset 0 2px var(--accent-soft);
 }
 .week-day > span {
@@ -983,7 +1012,7 @@ main#main {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
 }
 .week-day > span > i {
@@ -1002,12 +1031,12 @@ main#main {
 .day-mark {
   display: grid;
   place-items: center;
-  background: #c5f57609;
+  background: var(--accent-subtle);
   color: var(--accent-soft);
   width: 31px;
   height: 31px;
   margin: auto;
-  border: 1px solid #c5f57618;
+  border: 1px solid var(--line);
   border-radius: 8px;
 }
 .day-mark.rest {
@@ -1016,11 +1045,11 @@ main#main {
   border-color: var(--line);
 }
 .day-mark.done {
-  background: #c5f5761b;
+  background: var(--success-bg);
 }
 .week-day > small {
   display: block;
-  font-size: 8px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 9px;
   overflow: hidden;
@@ -1052,7 +1081,7 @@ main#main {
 }
 .workout-card:hover {
   background: var(--panel-hover);
-  border-color: #657b565e;
+  border-color: var(--control-border);
 }
 .workout-top {
   display: flex;
@@ -1082,7 +1111,7 @@ main#main {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 8px;
+  font-size: 12px;
   padding: 3px 7px;
   border-radius: 4px;
   background: var(--bg);
@@ -1092,15 +1121,15 @@ main#main {
 }
 .status-completed {
   color: var(--accent-soft);
-  background: #c5f5760a;
-  border-color: #c5f5761a;
+  background: var(--success-bg);
+  border-color: var(--line);
 }
 .status-skipped,
 .status-partially-completed {
   color: var(--peach);
 }
 .workout-type {
-  font-size: 8px;
+  font-size: 12px;
   color: var(--accent-soft);
   margin-top: 14px;
 }
@@ -1112,7 +1141,7 @@ main#main {
 }
 .workout-card > strong {
   display: block;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   margin-top: 5px;
 }
@@ -1120,14 +1149,14 @@ main#main {
   display: flex;
   align-items: center;
   gap: 13px;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   margin: 13px 0 15px;
   flex-wrap: wrap;
 }
 .commute-progress {
   color: var(--accent-soft);
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.5;
   margin-top: 7px;
 }
@@ -1145,7 +1174,7 @@ main#main {
 .workout-bottom {
   border-top: 1px solid var(--line);
   padding-top: 12px;
-  font-size: 9px;
+  font-size: 13px;
   display: flex;
   justify-content: space-between;
   width: 100%;
@@ -1177,7 +1206,7 @@ main#main {
   min-width: 0;
 }
 .recent-list strong {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -1185,7 +1214,7 @@ main#main {
   display: block;
 }
 .recent-list > a > div > span {
-  font-size: 8px;
+  font-size: 12px;
   color: var(--muted);
   display: block;
   margin-top: 3px;
@@ -1197,10 +1226,10 @@ main#main {
   margin-left: auto;
 }
 .recent-distance strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .recent-distance small {
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
   font-weight: 400;
 }
@@ -1220,14 +1249,14 @@ main#main {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--soft);
 }
 .mini-metrics svg {
   color: var(--muted);
 }
 .mini-metrics small {
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
 }
 .page-footer {
@@ -1238,11 +1267,11 @@ main#main {
   justify-content: space-between;
   gap: 14px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
 }
 .page-footer > span:first-child {
   letter-spacing: 2px;
-  font-size: 7px;
+  font-size: 12px;
 }
 .mobile-nav {
   display: none;
@@ -1255,10 +1284,10 @@ main#main {
   color: var(--soft);
   padding: 9px 12px;
   border-radius: 7px;
-  font-size: 10px;
+  font-size: 13px;
 }
 .helper {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   line-height: 1.8;
   margin: 12px 0;
@@ -1272,11 +1301,11 @@ main#main {
 }
 .error-state p {
   color: var(--soft);
-  font-size: 12px;
+  font-size: 14px;
   margin: 8px 0 18px;
 }
 .error-state a {
-  font-size: 12px;
+  font-size: 14px;
   text-decoration: underline;
   margin-left: 16px;
 }
@@ -1322,7 +1351,7 @@ label {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--soft);
   font-weight: 500;
 }
@@ -1336,7 +1365,7 @@ textarea {
   min-height: 40px;
   width: 100%;
   padding: 9px 11px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 400;
 }
 input::placeholder,
@@ -1391,7 +1420,7 @@ select:disabled {
   font-size: 21px;
 }
 .dialog-head p {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 6px;
 }
@@ -1411,7 +1440,7 @@ select:disabled {
   border: 0;
   color: var(--muted);
   flex: 1;
-  font-size: 11px;
+  font-size: 14px;
   padding: 8px 3px;
   border-radius: 5px;
 }
@@ -1443,12 +1472,12 @@ select:disabled {
 }
 .form-error,
 .field-error {
-  color: #efb1a0;
-  font-size: 11px;
+  color: var(--danger);
+  font-size: 14px;
 }
 .form-error {
-  background: #c96f5812;
-  border: 1px solid #cf7d6633;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
   border-radius: 7px;
   padding: 10px 13px;
   margin: 0 0 16px;
@@ -1464,7 +1493,7 @@ select:disabled {
   padding-top: 17px;
 }
 .quick-actions > span {
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1px;
   color: var(--muted);
   margin-right: auto;
@@ -1480,7 +1509,7 @@ select:disabled {
   border-radius: 8px;
 }
 .confirm-box p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--soft);
   margin-bottom: 12px;
 }
@@ -1494,12 +1523,12 @@ select:disabled {
   gap: 11px;
   max-width: min(560px, 90vw);
   background: var(--panel-hover);
-  border: 1px solid #b1d78b66;
+  border: 1px solid var(--control-border);
   border-radius: 10px;
   box-shadow: var(--shadow);
   padding: 14px 16px;
   z-index: 100;
-  font-size: 12px;
+  font-size: 14px;
 }
 .toast > svg {
   color: var(--accent-soft);
@@ -1535,7 +1564,7 @@ select:disabled {
   margin-bottom: 8px;
 }
 .empty-state p {
-  font-size: 12px;
+  font-size: 14px;
   max-width: 350px;
   margin: 0 auto 20px;
 }
@@ -1574,13 +1603,13 @@ select:disabled {
   align-items: center;
   gap: 7px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13px;
 }
 .calendar-options > label {
   flex-direction: row;
   align-items: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--muted);
 }
@@ -1607,7 +1636,7 @@ select:disabled {
   border-right: 0;
 }
 .calendar-cell.is-today {
-  background: #c5f57605;
+  background: var(--accent-subtle);
   box-shadow: inset 0 2px var(--accent-soft);
 }
 .calendar-cell-head {
@@ -1619,7 +1648,7 @@ select:disabled {
   padding: 2px 3px;
 }
 .calendar-cell-head > div > span {
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
   display: block;
 }
@@ -1666,19 +1695,19 @@ select:disabled {
   border-radius: 5px;
 }
 .compact .status-badge {
-  font-size: 7px;
+  font-size: 12px;
   padding: 2px 4px;
 }
 .compact > .workout-type {
-  font-size: 8px;
+  font-size: 12px;
   margin-top: 11px;
 }
 .compact > strong {
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.5;
 }
 .compact .workout-meta {
-  font-size: 8px;
+  font-size: 12px;
   margin: 12px 0 0;
   gap: 9px;
 }
@@ -1694,7 +1723,7 @@ select:disabled {
   align-items: center;
   justify-content: center;
   gap: 9px;
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
   background: none;
   border: 1px dashed var(--line);
@@ -1722,7 +1751,7 @@ select:disabled {
   gap: 8px;
 }
 .month .calendar-cell-head > div > span {
-  font-size: 8px;
+  font-size: 12px;
 }
 .month .compact .sport-icon,
 .month .compact .status-badge,
@@ -1734,7 +1763,7 @@ select:disabled {
   padding: 7px 6px;
 }
 .month .compact > strong {
-  font-size: 9px;
+  font-size: 13px;
   margin-top: 0;
 }
 .month .empty-day {
@@ -1765,12 +1794,12 @@ select:disabled {
   color: var(--accent-soft);
 }
 .calendar-hint strong {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 .calendar-hint p {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13px;
   max-width: 600px;
   margin-top: 4px;
 }
@@ -1784,7 +1813,7 @@ select:disabled {
   flex-wrap: wrap;
 }
 .activity-filters label {
-  font-size: 9px;
+  font-size: 13px;
   flex: 1;
   min-width: 95px;
 }
@@ -1794,7 +1823,7 @@ select:disabled {
 }
 .activity-filters input,
 .activity-filters select {
-  font-size: 10px;
+  font-size: 13px;
   min-height: 37px;
   padding: 9px;
 }
@@ -1827,7 +1856,7 @@ select:disabled {
   padding: 20px 25px;
 }
 .activity-table-head {
-  font-size: 8px;
+  font-size: 12px;
   color: var(--muted);
   letter-spacing: 1.1px;
   padding-top: 18px;
@@ -1836,7 +1865,7 @@ select:disabled {
   background: #0000000a;
 }
 .activity-row {
-  font-size: 11px;
+  font-size: 14px;
   border-bottom: 1px solid var(--line);
   transition: background 0.15s;
 }
@@ -1856,7 +1885,7 @@ select:disabled {
   min-width: 0;
 }
 .activity-title strong {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   display: block;
   overflow: hidden;
@@ -1864,13 +1893,13 @@ select:disabled {
   white-space: nowrap;
 }
 .activity-title > div > span {
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
   display: block;
   margin-top: 5px;
 }
 .activity-row small {
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
 }
 .activity-row > svg {
@@ -1881,7 +1910,7 @@ select:disabled {
   align-items: center;
   gap: 9px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
   margin-top: 30px;
 }
 .detail-metrics {
@@ -1912,7 +1941,7 @@ select:disabled {
   gap: 20px;
   padding: 14px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 11px;
+  font-size: 14px;
 }
 .detail-list dt {
   color: var(--muted);
@@ -1922,7 +1951,7 @@ select:disabled {
   font-weight: 500;
 }
 .subheading {
-  font-size: 13px;
+  font-size: 14px;
   margin: 27px 0 13px;
 }
 .split-table > div {
@@ -1930,11 +1959,11 @@ select:disabled {
   grid-template-columns: 0.6fr 1fr 1fr 0.6fr;
   gap: 10px;
   padding: 12px 2px;
-  font-size: 11px;
+  font-size: 14px;
   border-bottom: 1px solid var(--line);
 }
 .split-table > div:first-child {
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
 }
 .zone-list > div {
@@ -1943,11 +1972,11 @@ select:disabled {
   gap: 15px;
   align-items: center;
   margin: 15px 0;
-  font-size: 11px;
+  font-size: 14px;
 }
 .zone-list strong {
   font-weight: 500;
-  font-size: 10px;
+  font-size: 13px;
   text-align: right;
 }
 .comparison {
@@ -1956,13 +1985,13 @@ select:disabled {
   gap: 12px;
   border-bottom: 1px solid var(--line);
   padding: 19px 0;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
 }
 .comparison strong {
   display: block;
   color: var(--text);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   margin-top: 4px;
 }
@@ -1979,7 +2008,7 @@ select:disabled {
   margin-top: 22px;
 }
 .journal-preview > p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   margin: 15px 0;
 }
@@ -1990,7 +2019,7 @@ select:disabled {
   margin-top: 24px;
 }
 .analytics-charts .helper {
-  font-size: 10px;
+  font-size: 13px;
   margin-top: 6px;
   min-height: 32px;
 }
@@ -2016,13 +2045,13 @@ select:disabled {
   margin: 22px 0 12px;
 }
 .load-value > span {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   letter-spacing: 0;
   margin-left: 13px;
 }
 .load-card > p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
 }
 .load-formula {
@@ -2030,7 +2059,7 @@ select:disabled {
   background: var(--bg);
   border-radius: 8px;
   padding: 17px 12px;
-  font-size: 9px;
+  font-size: 13px;
   letter-spacing: 1px;
   margin: 23px 0 10px;
   text-align: center;
@@ -2077,7 +2106,7 @@ select:disabled {
   font-size: 17px;
 }
 .connection-head p {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   margin-top: 4px;
 }
@@ -2086,7 +2115,7 @@ select:disabled {
   align-items: center;
   gap: 5px;
   margin-left: auto;
-  font-size: 9px;
+  font-size: 13px;
   color: var(--muted);
 }
 .connection-status > i {
@@ -2108,11 +2137,11 @@ select:disabled {
   align-items: center;
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
 }
 .settings-detail strong {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--soft);
   text-align: right;
@@ -2126,7 +2155,7 @@ select:disabled {
   flex-wrap: wrap;
 }
 .connection-actions > a:not(.btn) {
-  font-size: 10px;
+  font-size: 13px;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -2145,7 +2174,7 @@ select:disabled {
 }
 .google-connect-prompt p {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.7;
   max-width: 480px;
   margin: 12px 0 22px;
@@ -2163,7 +2192,7 @@ select:disabled {
   justify-content: center;
   gap: 7px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
   margin-top: 13px;
 }
 .google-setup-page {
@@ -2192,7 +2221,7 @@ select:disabled {
   align-items: center;
   gap: 9px;
   color: var(--soft);
-  font-size: 12px;
+  font-size: 14px;
   counter-increment: setup;
 }
 .google-setup-steps li::before {
@@ -2211,7 +2240,7 @@ select:disabled {
   padding-top: 20px;
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.8;
 }
 .google-setup-page summary {
@@ -2234,7 +2263,7 @@ select:disabled {
   border-top: 1px solid var(--line);
 }
 .sheet-inventory > strong {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 .sheet-inventory > div {
@@ -2243,7 +2272,7 @@ select:disabled {
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 11px;
+  font-size: 14px;
 }
 .sheet-inventory > div > span {
   min-width: 0;
@@ -2255,7 +2284,7 @@ select:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 13px;
   margin-top: 4px;
 }
 .sheet-inventory > div > svg {
@@ -2285,16 +2314,16 @@ select:disabled {
   flex: 1;
 }
 .preference-row strong {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
 }
 .preference-row p {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   margin-top: 4px;
 }
 .preference-row > .muted {
-  font-size: 10px;
+  font-size: 13px;
 }
 .toggle {
   width: 34px;
@@ -2317,7 +2346,7 @@ select:disabled {
   background: var(--accent);
 }
 .toggle.on > span {
-  background: #26371a;
+  background: var(--on-accent);
   transform: translateX(13px);
 }
 .install-panel {
@@ -2362,7 +2391,7 @@ select:disabled {
   margin-top: 24px;
 }
 .install-instructions p {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   margin: 6px 0;
 }
@@ -2384,7 +2413,7 @@ select:disabled {
   margin: 20px 0;
 }
 .config-list > code {
-  font-size: 10px;
+  font-size: 13px;
   background: var(--bg);
   border: 1px solid var(--line);
   padding: 8px 11px;
@@ -2397,7 +2426,7 @@ select:disabled {
   align-items: center;
   padding: 15px 0;
   margin: 14px 0 7px;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 .security-note > svg {
@@ -2409,7 +2438,7 @@ select:disabled {
   align-items: center;
   margin-top: 25px;
   padding: 18px 0;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 .info-note > p {
@@ -2425,7 +2454,11 @@ select:disabled {
   align-items: center;
   justify-content: center;
   padding: 32px 20px;
-  background: radial-gradient(ellipse at 50% 20%, #b4e5760c, transparent 60%);
+  background: radial-gradient(
+    ellipse at 50% 20%,
+    var(--accent-subtle),
+    transparent 60%
+  );
 }
 .login-brand {
   display: flex;
@@ -2446,7 +2479,7 @@ select:disabled {
   margin: 23px 0 17px;
 }
 .login-card > p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
 }
 .login-card form {
@@ -2458,13 +2491,13 @@ select:disabled {
   justify-content: space-between;
 }
 .login-card form label {
-  font-size: 10px;
+  font-size: 13px;
 }
 .login-card input {
   min-height: 45px;
 }
 .login-card .helper {
-  font-size: 9px;
+  font-size: 13px;
   margin-top: 24px;
 }
 .login-card .helper > a {
@@ -2474,7 +2507,7 @@ select:disabled {
   margin-top: 15px;
 }
 .login-footer {
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 2px;
   color: var(--muted);
   margin-top: 30px;
@@ -2498,7 +2531,7 @@ select:disabled {
     font-size: 52px;
   }
   .hero-copy p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .today-card {
     width: 250px;
@@ -2547,14 +2580,14 @@ select:disabled {
     padding: 16px;
   }
   .metric-label > span:first-child {
-    font-size: 7px;
+    font-size: 12px;
     letter-spacing: 0.6px;
   }
   .metric-value {
     font-size: 32px;
   }
   .metric-note {
-    font-size: 8px;
+    font-size: 12px;
   }
   .goal-card {
     padding: 20px;
@@ -2566,7 +2599,7 @@ select:disabled {
     display: none;
   }
   .compact .status-badge {
-    font-size: 6px;
+    font-size: 12px;
   }
   .calendar-cell {
     padding: 10px 5px;
@@ -2575,7 +2608,7 @@ select:disabled {
     padding: 9px 6px;
   }
   .compact > strong {
-    font-size: 10px;
+    font-size: 13px;
   }
   .activity-table-head,
   .activity-row {
@@ -2609,11 +2642,11 @@ select:disabled {
     height: 34px;
   }
   .brand-sub {
-    font-size: 8px;
+    font-size: 12px;
     letter-spacing: 2.7px;
   }
   .nav-item {
-    font-size: 11px;
+    font-size: 14px;
     padding: 12px 10px;
     gap: 10px;
   }
@@ -2624,7 +2657,7 @@ select:disabled {
     font-size: 18px;
   }
   .nav-label {
-    font-size: 7px;
+    font-size: 12px;
   }
   .main-wrap {
     margin-left: 180px;
@@ -2649,7 +2682,7 @@ select:disabled {
     padding: 14px 12px;
   }
   .metric-label > span:first-child {
-    font-size: 7px;
+    font-size: 12px;
     max-width: 95px;
   }
   .metric-icon {
@@ -2683,14 +2716,14 @@ select:disabled {
     align-items: flex-start;
   }
   .segmented.small button {
-    font-size: 8px;
+    font-size: 12px;
     padding: 6px 8px;
   }
   .chart-summary > .muted {
-    font-size: 8px;
+    font-size: 12px;
   }
   .chart-summary strong > span {
-    font-size: 9px;
+    font-size: 13px;
   }
   .goal-ring {
     width: 140px;
@@ -2704,10 +2737,10 @@ select:disabled {
     padding: 0 13px;
   }
   .recent-list strong {
-    font-size: 9px;
+    font-size: 13px;
   }
   .recent-distance strong {
-    font-size: 11px;
+    font-size: 14px;
   }
   .recent-distance > svg {
     display: none;
@@ -2719,14 +2752,14 @@ select:disabled {
     padding: 15px;
   }
   .status-badge {
-    font-size: 7px;
+    font-size: 12px;
   }
   .workout-card > strong {
-    font-size: 12px;
+    font-size: 14px;
   }
   .workout-meta {
     gap: 8px;
-    font-size: 9px;
+    font-size: 13px;
   }
   .calendar-date-nav h2 {
     font-size: 15px;
@@ -2746,16 +2779,16 @@ select:disabled {
     display: grid;
   }
   .week .compact > strong {
-    font-size: 12px;
+    font-size: 14px;
   }
   .week .compact .status-badge {
-    font-size: 8px;
+    font-size: 12px;
   }
   .week .compact {
     padding: 12px;
   }
   .month .compact > strong {
-    font-size: 8px;
+    font-size: 12px;
   }
   .month .calendar-cell-head > div {
     flex-direction: column;
@@ -2799,7 +2832,7 @@ select:disabled {
     gap: 9px;
   }
   .preference-row .btn {
-    font-size: 9px;
+    font-size: 13px;
     padding: 7px;
   }
   .goals-grid {
@@ -2821,7 +2854,7 @@ select:disabled {
     padding: 0 23px;
   }
   .breadcrumb {
-    font-size: 10px;
+    font-size: 13px;
     gap: 9px;
   }
   .topbar-right {
@@ -2831,7 +2864,7 @@ select:disabled {
     min-height: 33px;
   }
   .sync-indicator {
-    font-size: 9px;
+    font-size: 13px;
   }
   .mobile-nav {
     position: fixed;
@@ -2855,7 +2888,7 @@ select:disabled {
     align-items: center;
     justify-content: center;
     color: var(--muted);
-    font-size: 8px;
+    font-size: 12px;
     min-width: 54px;
     padding: 2px 10px;
   }
@@ -2883,24 +2916,24 @@ select:disabled {
   }
   .metric-label > span:first-child {
     max-width: none;
-    font-size: 7px;
+    font-size: 12px;
   }
   .page-heading {
     padding: 25px 0;
   }
   .mode-banner {
-    font-size: 8px;
+    font-size: 12px;
     padding-top: 11px;
     min-height: 35px;
   }
   .mode-banner > a {
-    font-size: 8px;
+    font-size: 12px;
   }
   .page-heading h1 {
     font-size: 31px;
   }
   .page-heading p {
-    font-size: 11px;
+    font-size: 14px;
   }
   .section-heading h2 {
     font-size: 16px;
@@ -2943,14 +2976,14 @@ select:disabled {
     display: none;
   }
   .topbar .btn {
-    font-size: 9px;
+    font-size: 13px;
     gap: 6px;
   }
   .breadcrumb {
-    font-size: 9px;
+    font-size: 13px;
   }
   .mode-banner {
-    font-size: 7px;
+    font-size: 12px;
     gap: 5px;
     line-height: 1.7;
     display: block;
@@ -2966,7 +2999,7 @@ select:disabled {
   .mode-banner > a {
     display: inline-flex;
     margin: 0 0 0 6px;
-    font-size: 7px;
+    font-size: 12px;
   }
   .page-heading {
     gap: 15px;
@@ -2978,12 +3011,12 @@ select:disabled {
     letter-spacing: -1px;
   }
   .page-heading .eyebrow {
-    font-size: 7px;
+    font-size: 12px;
     letter-spacing: 1.3px;
     margin-bottom: 8px;
   }
   .page-heading p {
-    font-size: 10px;
+    font-size: 13px;
     max-width: 270px;
     line-height: 1.7;
   }
@@ -3000,7 +3033,7 @@ select:disabled {
     height: 16px;
   }
   .page-heading > .count-pill {
-    font-size: 8px;
+    font-size: 12px;
     padding: 7px 9px;
     white-space: nowrap;
     margin-top: 17px;
@@ -3014,7 +3047,7 @@ select:disabled {
     flex: 1;
   }
   .hero-tag {
-    font-size: 6px;
+    font-size: 12px;
     letter-spacing: 1.65px;
   }
   .hero-copy h2 {
@@ -3023,21 +3056,21 @@ select:disabled {
     margin-top: 20px;
   }
   .hero-copy p {
-    font-size: 9px;
+    font-size: 13px;
     line-height: 1.8;
   }
   .hero-copy > a {
-    font-size: 10px;
+    font-size: 13px;
     margin-top: 18px;
     gap: 12px;
   }
   .hero-mark {
-    font-size: 8px;
+    font-size: 12px;
     margin-top: 25px;
     gap: 7px;
   }
   .hero-mark > span {
-    font-size: 5px;
+    font-size: 12px;
     letter-spacing: 1.2px;
   }
   .hero-art {
@@ -3056,7 +3089,7 @@ select:disabled {
     background: #172016e8;
   }
   .today-card > .eyebrow {
-    font-size: 6px;
+    font-size: 12px;
     letter-spacing: 0.8px;
     gap: 4px;
   }
@@ -3064,7 +3097,7 @@ select:disabled {
     width: 10px;
   }
   .today-card-type {
-    font-size: 9px;
+    font-size: 13px;
     gap: 5px;
     margin-top: 20px;
   }
@@ -3075,15 +3108,15 @@ select:disabled {
     font-size: 36px;
   }
   .today-card h3 > span {
-    font-size: 11px;
+    font-size: 14px;
     margin-left: 5px;
   }
   .today-card > p {
-    font-size: 8px;
+    font-size: 12px;
     margin-top: 8px;
   }
   .today-card > button {
-    font-size: 8px;
+    font-size: 12px;
     margin-top: 19px;
     padding-top: 13px;
   }
@@ -3099,11 +3132,11 @@ select:disabled {
     font-size: 15px;
   }
   .section-heading p {
-    font-size: 9px;
+    font-size: 13px;
     max-width: 240px;
   }
   .date-filter {
-    font-size: 9px;
+    font-size: 13px;
     min-height: 30px;
     padding: 0 8px;
     gap: 5px;
@@ -3112,7 +3145,7 @@ select:disabled {
     width: 12px;
   }
   .date-filter select {
-    font-size: 9px;
+    font-size: 13px;
     min-height: 30px;
   }
   .custom-dates {
@@ -3126,7 +3159,7 @@ select:disabled {
     padding: 16px;
   }
   .metric-label > span:first-child {
-    font-size: 7px;
+    font-size: 12px;
     letter-spacing: 0.8px;
     max-width: 110px;
   }
@@ -3135,10 +3168,10 @@ select:disabled {
     margin-top: 14px;
   }
   .metric-value > span {
-    font-size: 12px;
+    font-size: 14px;
   }
   .metric-note {
-    font-size: 8px;
+    font-size: 12px;
     min-height: 25px;
   }
   .dashboard-grid {
@@ -3156,11 +3189,11 @@ select:disabled {
     font-size: 16px;
   }
   .volume-panel .section-title .eyebrow {
-    font-size: 6px;
+    font-size: 12px;
     letter-spacing: 1.5px;
   }
   .segmented.small button {
-    font-size: 8px;
+    font-size: 12px;
     padding: 7px 8px;
   }
   .chart-summary {
@@ -3170,17 +3203,17 @@ select:disabled {
     font-size: 27px;
   }
   .chart-summary strong > span {
-    font-size: 9px;
+    font-size: 13px;
   }
   .chart-summary > .muted {
-    font-size: 8px;
+    font-size: 12px;
   }
   .training-chart {
     height: 190px;
     margin-top: 10px;
   }
   .chart-legend > span {
-    font-size: 8px;
+    font-size: 12px;
   }
   .chart-legend {
     gap: 16px;
@@ -3213,11 +3246,11 @@ select:disabled {
     font-size: 28px;
   }
   .goal-ring small {
-    font-size: 8px;
+    font-size: 12px;
     margin-left: 3px;
   }
   .goal-ring > div > .muted {
-    font-size: 5px;
+    font-size: 12px;
     letter-spacing: 1.5px;
     text-align: center;
   }
@@ -3227,21 +3260,21 @@ select:disabled {
     margin-top: 3px;
   }
   .goal-card > p {
-    font-size: 8px;
+    font-size: 12px;
     grid-column: 2;
     margin-top: 2px;
   }
   .goal-progress-text {
     grid-column: 2;
-    font-size: 8px;
+    font-size: 12px;
     gap: 6px;
     margin: 16px 0 6px;
   }
   .goal-progress-text strong {
-    font-size: 9px;
+    font-size: 13px;
   }
   .goal-progress-text strong > span {
-    font-size: 7px;
+    font-size: 12px;
   }
   .goal-card .progress-track {
     grid-column: 2;
@@ -3249,13 +3282,13 @@ select:disabled {
   }
   .goal-card > .goal-footnote {
     grid-column: 1/-1;
-    font-size: 8px;
+    font-size: 12px;
     margin-top: 14px;
   }
   .goal-card > .btn {
     grid-column: 2;
     margin-top: 12px;
-    font-size: 10px;
+    font-size: 13px;
     min-height: 32px;
     padding: 9px;
   }
@@ -3266,7 +3299,7 @@ select:disabled {
     padding: 13px 2px 11px;
   }
   .week-day > span {
-    font-size: 8px;
+    font-size: 12px;
     gap: 3px;
   }
   .week-day > strong {
@@ -3283,7 +3316,7 @@ select:disabled {
     height: 14px;
   }
   .week-day > small {
-    font-size: 6px;
+    font-size: 12px;
     margin-top: 8px;
     max-width: 45px;
     margin-left: auto;
@@ -3300,20 +3333,20 @@ select:disabled {
     padding: 15px 13px;
   }
   .workout-card > strong {
-    font-size: 12px;
+    font-size: 14px;
   }
   .workout-type {
-    font-size: 8px;
+    font-size: 12px;
   }
   .workout-meta {
-    font-size: 9px;
+    font-size: 13px;
     gap: 8px;
   }
   .workout-meta b {
     font-size: 21px;
   }
   .status-badge {
-    font-size: 7px;
+    font-size: 12px;
     padding: 3px 5px;
   }
   .sport-icon {
@@ -3330,16 +3363,16 @@ select:disabled {
     padding: 16px 0;
   }
   .recent-list strong {
-    font-size: 11px;
+    font-size: 14px;
   }
   .recent-list > a > div > span {
-    font-size: 9px;
+    font-size: 13px;
   }
   .recent-distance > svg {
     display: block;
   }
   .recent-distance strong {
-    font-size: 13px;
+    font-size: 14px;
   }
   .mini-metrics {
     margin-top: 19px;
@@ -3347,22 +3380,22 @@ select:disabled {
     gap: 15px;
   }
   .mini-metrics > span {
-    font-size: 10px;
+    font-size: 13px;
   }
   .mini-metrics small {
-    font-size: 9px;
+    font-size: 13px;
   }
   .page-footer {
-    font-size: 7px;
+    font-size: 12px;
     gap: 10px;
     padding-top: 20px;
     flex-direction: column;
   }
   .page-footer > span:first-child {
-    font-size: 6px;
+    font-size: 12px;
   }
   .text-link {
-    font-size: 9px;
+    font-size: 13px;
   }
   .calendar-toolbar {
     gap: 13px;
@@ -3373,7 +3406,7 @@ select:disabled {
     gap: 7px;
   }
   .calendar-date-nav h2 {
-    font-size: 13px;
+    font-size: 14px;
     margin: 0 1px;
   }
   .calendar-date-nav .btn-icon {
@@ -3382,26 +3415,26 @@ select:disabled {
     height: 30px;
   }
   .calendar-date-nav > .btn-sm {
-    font-size: 9px;
+    font-size: 13px;
     min-height: 30px;
     padding: 5px 8px;
   }
   .segmented button {
-    font-size: 10px;
+    font-size: 13px;
     padding: 6px 15px;
   }
   .calendar-options {
     padding-top: 18px;
-    font-size: 8px;
+    font-size: 12px;
   }
   .calendar-options > div {
     gap: 14px;
   }
   .calendar-options > div > span {
-    font-size: 8px;
+    font-size: 12px;
   }
   .calendar-options > label {
-    font-size: 8px;
+    font-size: 12px;
   }
   .calendar-grid.week {
     grid-template-columns: 1fr;
@@ -3457,15 +3490,15 @@ select:disabled {
   }
   .week .compact > .workout-type {
     margin-top: 0;
-    font-size: 9px;
-    max-width: calc(100% - 75px);
-  }
-  .week .compact > strong {
     font-size: 13px;
     max-width: calc(100% - 75px);
   }
+  .week .compact > strong {
+    font-size: 14px;
+    max-width: calc(100% - 75px);
+  }
   .week .compact .workout-meta {
-    font-size: 9px;
+    font-size: 13px;
     justify-content: space-between;
     margin-top: 12px;
   }
@@ -3489,10 +3522,10 @@ select:disabled {
     gap: 0;
   }
   .month .calendar-cell-head > div > span {
-    font-size: 6px;
+    font-size: 12px;
   }
   .month .calendar-cell-head strong {
-    font-size: 13px;
+    font-size: 14px;
   }
   .month .calendar-cell-head > button {
     display: none;
@@ -3503,7 +3536,7 @@ select:disabled {
     border-radius: 3px;
   }
   .month .compact > strong {
-    font-size: 6px;
+    font-size: 12px;
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -3529,13 +3562,13 @@ select:disabled {
     gap: 13px;
   }
   .calendar-hint p {
-    font-size: 9px;
+    font-size: 13px;
   }
   .calendar-hint strong {
-    font-size: 11px;
+    font-size: 14px;
   }
   .calendar-hint > .btn {
-    font-size: 10px;
+    font-size: 13px;
   }
   .activity-filters {
     gap: 11px;
@@ -3543,7 +3576,7 @@ select:disabled {
   }
   .activity-filters label {
     min-width: 95px;
-    font-size: 8px;
+    font-size: 12px;
   }
   .activity-filters .search-input {
     min-width: 100%;
@@ -3558,7 +3591,7 @@ select:disabled {
   }
   .activity-filters input,
   .activity-filters select {
-    font-size: 10px;
+    font-size: 13px;
   }
   .activity-table-head {
     display: none;
@@ -3576,10 +3609,10 @@ select:disabled {
     gap: 9px;
   }
   .activity-title strong {
-    font-size: 11px;
+    font-size: 14px;
   }
   .activity-title > div > span {
-    font-size: 8px;
+    font-size: 12px;
     max-width: 185px;
     line-height: 1.7;
   }
@@ -3596,7 +3629,7 @@ select:disabled {
     text-align: right;
   }
   .activity-row > span:nth-child(3) {
-    font-size: 9px;
+    font-size: 13px;
     color: var(--muted);
     grid-column: 2;
     text-align: right;
@@ -3612,7 +3645,7 @@ select:disabled {
     padding: 16px 13px;
   }
   .detail-metrics .metric-label > span:first-child {
-    font-size: 6px;
+    font-size: 12px;
     max-width: 90px;
   }
   .detail-metrics .metric-value {
@@ -3620,7 +3653,7 @@ select:disabled {
     margin-top: 17px;
   }
   .detail-metrics .metric-value > span {
-    font-size: 10px;
+    font-size: 13px;
   }
   .detail-grid {
     grid-template-columns: 1fr;
@@ -3647,7 +3680,7 @@ select:disabled {
     font-size: 45px;
   }
   .load-formula {
-    font-size: 8px;
+    font-size: 12px;
     padding: 17px 7px;
   }
   .load-formula > span {
@@ -3672,28 +3705,28 @@ select:disabled {
   }
   .connection-status {
     margin-left: auto;
-    font-size: 8px;
+    font-size: 12px;
   }
   .connection-head h2 {
     font-size: 16px;
   }
   .connection-head p {
-    font-size: 9px;
+    font-size: 13px;
   }
   .settings-detail {
-    font-size: 9px;
+    font-size: 13px;
   }
   .settings-detail strong {
-    font-size: 9px;
+    font-size: 13px;
   }
   .preference-row strong {
-    font-size: 11px;
+    font-size: 14px;
   }
   .preference-row p {
-    font-size: 9px;
+    font-size: 13px;
   }
   .preference-row .btn {
-    font-size: 9px;
+    font-size: 13px;
     padding: 7px 9px;
   }
   .install-panel > h2 {
@@ -3703,11 +3736,11 @@ select:disabled {
     gap: 8px;
   }
   .config-list > code {
-    font-size: 8px;
+    font-size: 12px;
     padding: 7px 9px;
   }
   .info-note {
-    font-size: 10px;
+    font-size: 13px;
     gap: 12px;
   }
   .dialog-content {
@@ -3725,13 +3758,13 @@ select:disabled {
     font-size: 20px;
   }
   .dialog-head p {
-    font-size: 10px;
+    font-size: 13px;
   }
   .form-grid {
     gap: 15px 12px;
   }
   .form-grid label {
-    font-size: 10px;
+    font-size: 13px;
   }
   input,
   select,
@@ -3742,10 +3775,10 @@ select:disabled {
   .activity-filters input,
   .activity-filters select,
   .date-filter select {
-    font-size: 12px;
+    font-size: 14px;
   }
   .form-grid .btn {
-    font-size: 11px;
+    font-size: 14px;
   }
   .check-label {
     font-size: 9px !important;
@@ -3760,7 +3793,7 @@ select:disabled {
     margin: 0 0 6px;
   }
   .editor-tabs > button {
-    font-size: 10px;
+    font-size: 13px;
   }
   .login-card {
     padding: 30px 25px;
@@ -3779,7 +3812,7 @@ select:disabled {
     height: 135px;
   }
   .custom-dates input {
-    font-size: 12px;
+    font-size: 14px;
     width: 120px;
   }
   .page-heading > .date-filter {
@@ -3808,20 +3841,20 @@ select:disabled {
     padding: 13px 10px;
   }
   .hero-copy p {
-    font-size: 8px;
+    font-size: 12px;
   }
   .metric-card {
     padding: 13px;
   }
   .metric-label > span:first-child {
-    font-size: 6px;
+    font-size: 12px;
     max-width: 95px;
   }
   .metric-value {
     font-size: 30px;
   }
   .metric-note {
-    font-size: 7px;
+    font-size: 12px;
   }
   .goal-card {
     column-gap: 15px;
@@ -3836,7 +3869,7 @@ select:disabled {
     padding: 17px 14px;
   }
   .recent-list strong {
-    font-size: 10px;
+    font-size: 13px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -3849,11 +3882,11 @@ select:disabled {
   }
 }
 .calendar-jump {
-  font-size: 9px;
+  font-size: 13px;
   margin-left: auto;
 }
 .calendar-jump input {
-  font-size: 11px;
+  font-size: 14px;
   min-height: 34px;
   padding: 6px 9px;
 }
@@ -3863,16 +3896,16 @@ select:disabled {
   border-top: 1px solid var(--line);
 }
 .sheets-import h3 {
-  font-size: 13px;
+  font-size: 14px;
 }
 .sheets-import .form-grid {
   margin: 16px 0;
 }
 .sheets-import label {
-  font-size: 10px;
+  font-size: 13px;
 }
 .sheets-import select {
-  font-size: 11px;
+  font-size: 14px;
 }
 .import-preview {
   padding: 15px;
@@ -3880,12 +3913,12 @@ select:disabled {
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 14px;
 }
 .import-preview ul {
   padding-left: 18px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13px;
 }
 .import-preview li {
   margin: 7px 0;
@@ -3895,7 +3928,7 @@ select:disabled {
     margin-left: 0;
   }
   .calendar-jump input {
-    font-size: 12px;
+    font-size: 14px;
     width: 135px;
   }
 }

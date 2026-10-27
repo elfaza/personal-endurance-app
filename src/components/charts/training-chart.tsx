@@ -22,17 +22,33 @@ export function TrainingChart({
   const keys =
     metric === "distance"
       ? [
-          { key: "runningKm", name: "Running", color: "#c5f576" },
-          { key: "cyclingKm", name: "Cycling", color: "#95a8f9" },
-          { key: "plannedKm", name: "Planned total", color: "#7b8388" },
+          { key: "runningKm", name: "Running", color: "var(--running)" },
+          { key: "cyclingKm", name: "Cycling", color: "var(--purple)" },
+          {
+            key: "plannedKm",
+            name: "Planned total",
+            color: "var(--chart-planned)",
+          },
         ]
       : metric === "pace"
-        ? [{ key: "pace", name: "Running pace", color: "#c5f576" }]
+        ? [{ key: "pace", name: "Running pace", color: "var(--running)" }]
         : metric === "heart"
-          ? [{ key: "avgHr", name: "Average HR", color: "#f1a48c" }]
+          ? [{ key: "avgHr", name: "Average HR", color: "var(--peach)" }]
           : metric === "volume"
-            ? [{ key: "totalMin", name: "Training minutes", color: "#95a8f9" }]
-            : [{ key: "consistency", name: "Consistency", color: "#c5f576" }];
+            ? [
+                {
+                  key: "totalMin",
+                  name: "Training minutes",
+                  color: "var(--purple)",
+                },
+              ]
+            : [
+                {
+                  key: "consistency",
+                  name: "Consistency",
+                  color: "var(--running)",
+                },
+              ];
   return (
     <div
       className="training-chart"
@@ -62,14 +78,14 @@ export function TrainingChart({
             }
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "var(--muted)", fontSize: 11 }}
+            tick={{ fill: "var(--muted)", fontSize: 12 }}
             dy={10}
             minTickGap={22}
           />
           <YAxis
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "var(--muted)", fontSize: 11 }}
+            tick={{ fill: "var(--muted)", fontSize: 12 }}
             tickFormatter={(v) =>
               metric === "pace" ? pace(Number(v)) : String(v)
             }
@@ -80,7 +96,7 @@ export function TrainingChart({
               background: "var(--panel)",
               border: "1px solid var(--line)",
               borderRadius: 12,
-              fontSize: 12,
+              fontSize: 14,
               color: "var(--text)",
             }}
             labelFormatter={(d) => `Week of ${dateLabel(String(d))}`}
@@ -96,8 +112,8 @@ export function TrainingChart({
               <Bar
                 dataKey="cyclingKm"
                 name="Cycling"
-                fill="#95a8f9"
-                fillOpacity={0.55}
+                fill="var(--purple)"
+                fillOpacity={0.85}
                 radius={[4, 4, 0, 0]}
                 maxBarSize={18}
               />
@@ -105,7 +121,7 @@ export function TrainingChart({
                 type="monotone"
                 dataKey="runningKm"
                 name="Running"
-                stroke="#c5f576"
+                stroke="var(--running)"
                 strokeWidth={2.5}
                 fill={`url(#fill-${metric})`}
                 activeDot={{ r: 5, stroke: "var(--panel)", strokeWidth: 3 }}
@@ -114,7 +130,7 @@ export function TrainingChart({
                 type="monotone"
                 dataKey="plannedKm"
                 name="Planned total"
-                stroke="#7b8388"
+                stroke="var(--chart-planned)"
                 strokeDasharray="4 5"
                 dot={false}
                 strokeWidth={1.5}

@@ -22,6 +22,7 @@ import {
 import { request, SNAPSHOT_KEY, useTraining } from "@/components/providers";
 import { SheetsImport } from "@/components/sheets-import";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle, useTheme } from "@/components/theme-toggle";
 type Inventory = {
   title: string;
   tabs: { title: string; header: unknown[] }[];
@@ -36,11 +37,7 @@ export function Settings() {
   const [inspecting, setInspecting] = useState(false);
   const [initializing, setInitializing] = useState(false);
   const [error, setError] = useState("");
-  const [light, setLight] = useState(
-    () =>
-      typeof document !== "undefined" &&
-      document.documentElement.dataset.theme === "light",
-  );
+  const light = useTheme() === "light";
   const [cache, setCache] = useState(
     () =>
       typeof localStorage === "undefined" ||
@@ -96,12 +93,6 @@ export function Settings() {
     } finally {
       setInitializing(false);
     }
-  }
-  function theme() {
-    const next = !light;
-    setLight(next);
-    document.documentElement.dataset.theme = next ? "light" : "dark";
-    localStorage.setItem("pe.theme", next ? "light" : "dark");
   }
   function cacheToggle() {
     const next = !cache;
@@ -359,9 +350,7 @@ export function Settings() {
               <strong>Appearance</strong>
               <p>{light ? "Light" : "Dark"} mode</p>
             </div>
-            <Button size="sm" variant="outline" onClick={theme}>
-              Switch to {light ? "dark" : "light"}
-            </Button>
+            <ThemeToggle />
           </div>
           <div className="preference-row">
             <span className="preference-icon">

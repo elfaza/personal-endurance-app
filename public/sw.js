@@ -1,7 +1,8 @@
-const CACHE = "pe-static-v1";
+const CACHE = "pe-static-v2";
 const CORE = [
   "/offline.html",
   "/offline.js",
+  "/theme.js",
   "/icon.svg",
   "/icon-192.png",
   "/icon-512.png",

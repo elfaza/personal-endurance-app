@@ -1,0 +1,1165 @@
+/* Shared light / charcoal presentation. Data and training rules live elsewhere. */
+body {
+  font-size: 16px;
+  line-height: 1.6;
+}
+h1 {
+  font-size: clamp(27px, 2.5vw, 34px);
+  letter-spacing: -0.8px;
+  line-height: 1.2;
+}
+h2 {
+  font-size: 20px;
+  line-height: 1.35;
+  letter-spacing: -0.3px;
+}
+h3 {
+  font-size: 17px;
+  line-height: 1.4;
+}
+button,
+a,
+input,
+select,
+textarea {
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+button:hover {
+  transform: none;
+}
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+}
+.lime {
+  color: var(--running);
+}
+.panel {
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+.btn {
+  min-height: 44px;
+  font-size: 14px;
+  border-radius: 9px;
+  padding: 11px 17px;
+}
+.btn-sm {
+  min-height: 42px;
+  font-size: 14px;
+  padding: 10px 13px;
+}
+.btn-icon,
+.icon-button {
+  min-width: 44px;
+  width: 44px;
+  min-height: 44px;
+  height: 44px;
+}
+.btn-primary,
+.brand-icon,
+.skip-link {
+  color: var(--on-accent);
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+.btn-outline {
+  background: var(--panel);
+  border-color: var(--control-border);
+}
+.btn-ghost {
+  color: var(--soft);
+}
+.btn-danger {
+  background: #b42338;
+}
+.text-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-soft);
+  min-height: 36px;
+}
+.text-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.sidebar {
+  padding: 28px 18px 20px;
+}
+.brand {
+  font-size: 21px;
+}
+.brand-sub {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+.nav-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  margin: 36px 12px 14px;
+}
+.nav-item {
+  min-height: 48px;
+  font-size: 14px;
+  color: var(--soft);
+  border-left: 3px solid transparent;
+  padding: 12px;
+}
+.nav-item.active {
+  background: var(--accent-subtle);
+  border-left-color: var(--accent);
+}
+.sidebar-note {
+  display: none;
+}
+.profile {
+  padding-top: 18px;
+}
+.profile strong {
+  font-size: 13px;
+}
+.profile div span {
+  font-size: 12px;
+}
+.topbar {
+  background: var(--sidebar);
+  height: 76px;
+  padding-inline: 32px;
+}
+.breadcrumb,
+.today-date,
+.sync-indicator {
+  font-size: 13px;
+}
+.topbar-right {
+  gap: 14px;
+}
+.theme-toggle {
+  flex-shrink: 0;
+}
+main#main {
+  padding-inline: 32px;
+}
+.mode-banner {
+  font-size: 12px;
+  line-height: 1.6;
+  padding-top: 14px;
+  min-height: 34px;
+}
+.page-heading {
+  padding: 26px 0 24px;
+}
+.page-heading .eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.07em;
+  margin-bottom: 8px;
+}
+.page-heading p {
+  font-size: 15px;
+  max-width: 65ch;
+  line-height: 1.6;
+}
+.section-heading {
+  margin: 26px 0 16px;
+}
+.section-heading h2 {
+  font-size: 20px;
+}
+.section-heading p {
+  font-size: 14px;
+}
+.section-title .eyebrow {
+  font-size: 12px;
+}
+.training-focus-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+  gap: 18px;
+}
+.session-focus,
+.week-focus {
+  padding: 24px;
+  min-width: 0;
+}
+.focus-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.focus-heading > svg {
+  color: var(--muted);
+}
+.focus-heading > span {
+  font-size: 14px;
+  color: var(--soft);
+}
+.focus-session {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.focus-session > .sport-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+.focus-session h3 {
+  font-size: 23px;
+  line-height: 1.3;
+  margin-bottom: 8px;
+  letter-spacing: -0.3px;
+}
+.focus-progress {
+  color: var(--soft);
+  font-size: 14px;
+  margin-top: 7px;
+}
+.focus-schedule {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 16px;
+}
+.focus-schedule > span {
+  display: block;
+  color: var(--text);
+  margin-top: 3px;
+}
+.focus-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+.session-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.session-facts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg);
+  color: var(--soft);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.session-facts strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.focus-empty p {
+  color: var(--muted);
+  margin: 8px 0 20px;
+  font-size: 15px;
+}
+.week-focus {
+  display: flex;
+  flex-direction: column;
+}
+.week-focus p {
+  font-size: 15px;
+  color: var(--muted);
+  margin: 16px 0;
+}
+.week-focus .text-link {
+  margin-top: auto;
+  align-self: flex-start;
+}
+.week-focus progress {
+  width: 100%;
+  height: 12px;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  appearance: none;
+  background: var(--line);
+}
+.week-focus progress::-webkit-progress-bar {
+  background: var(--line);
+  border-radius: 10px;
+}
+.week-focus progress::-webkit-progress-value {
+  background: var(--running);
+  border-radius: 10px;
+}
+.week-focus progress::-moz-progress-bar {
+  background: var(--running);
+  border-radius: 10px;
+}
+.metrics-grid {
+  gap: 16px;
+}
+.metric-card {
+  padding: 20px;
+}
+.metric-label {
+  align-items: flex-start;
+}
+.metric-label > span:first-child {
+  font-size: 14px;
+  letter-spacing: 0;
+  font-weight: 500;
+  max-width: none;
+}
+.metric-icon {
+  width: 36px;
+  height: 36px;
+}
+.metric-value {
+  font-size: 36px;
+  font-weight: 650;
+  letter-spacing: -1px;
+  margin: 10px 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.metric-value > span {
+  font-size: 15px;
+}
+.metric-note {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.dashboard-grid {
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 1fr);
+  gap: 18px;
+}
+.volume-panel {
+  padding: 24px;
+}
+.volume-panel .section-title {
+  flex-wrap: wrap;
+}
+.segmented {
+  border-radius: 9px;
+  padding: 4px;
+}
+.segmented button,
+.segmented.small button {
+  font-size: 13px;
+  min-height: 36px;
+  padding: 7px 12px;
+}
+.segmented button.active {
+  background: var(--panel);
+  color: var(--accent-soft);
+  font-weight: 600;
+}
+.chart-summary {
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+.chart-summary strong > span,
+.chart-summary > .muted {
+  font-size: 13px;
+}
+.training-chart {
+  height: 230px;
+}
+.chart-legend {
+  gap: 18px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+}
+.chart-legend > span {
+  font-size: 13px;
+}
+.goal-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  padding: 24px;
+}
+.goal-card .section-title {
+  margin-bottom: 16px;
+}
+.goal-card h3 {
+  font-size: 20px;
+  margin-top: 0;
+}
+.goal-card > p {
+  font-size: 14px;
+  margin-top: 8px;
+}
+.goal-distance {
+  font-size: 38px;
+  line-height: 1.3;
+  font-weight: 650;
+  letter-spacing: -0.7px;
+  margin: 12px 0 0;
+}
+.goal-distance > span {
+  font-size: 17px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 8px;
+}
+.goal-progress-text {
+  font-size: 14px;
+  margin: 24px 0 10px;
+}
+.goal-progress-text strong,
+.goal-progress-text strong > span {
+  font-size: 14px;
+}
+.goal-card .progress-track {
+  height: 10px;
+}
+.progress-track > div {
+  background: var(--running);
+}
+.goal-card > .goal-footnote {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 16px;
+}
+.week-strip {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-radius: 12px;
+}
+.week-day {
+  padding: 16px 8px;
+}
+.week-day > span {
+  font-size: 13px;
+}
+.week-day > small {
+  font-size: 12px;
+  max-width: none;
+  white-space: normal;
+  min-height: 36px;
+  line-height: 1.4;
+}
+.week-day.is-today {
+  box-shadow: inset 0 3px var(--accent);
+}
+.day-mark {
+  width: 36px;
+  height: 36px;
+  color: var(--running);
+}
+.day-mark.done {
+  color: var(--success);
+}
+.workout-card {
+  border-radius: 12px;
+  padding: 18px;
+}
+.workout-card > strong {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.workout-top {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.workout-type {
+  font-size: 13px;
+  color: var(--running);
+}
+.sport-icon {
+  color: var(--running);
+}
+.workout-meta {
+  font-size: 14px;
+}
+.workout-bottom {
+  font-size: 13px;
+}
+.status-badge {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--soft);
+  background: var(--panel-hover);
+  white-space: normal;
+  max-width: 100%;
+}
+.status-completed {
+  color: var(--success);
+  background: var(--success-bg);
+}
+.status-partially-completed {
+  color: var(--warning);
+  background: var(--warning-bg);
+}
+.status-skipped {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+.status-rescheduled {
+  color: var(--soft);
+  background: var(--panel-hover);
+}
+.workout-card.rescheduled {
+  opacity: 1;
+  border-style: dashed;
+}
+.recent-list strong {
+  font-size: 14px;
+}
+.recent-list > a > div > span {
+  font-size: 12px;
+}
+.recent-distance strong {
+  font-size: 17px;
+}
+.recent-distance small {
+  font-size: 13px;
+}
+.helper {
+  font-size: 14px;
+  line-height: 1.7;
+}
+label {
+  font-size: 14px;
+}
+input,
+select,
+textarea {
+  font-size: 16px;
+  min-height: 44px;
+  background: var(--panel);
+  border-color: var(--control-border);
+  border-radius: 8px;
+}
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  flex-shrink: 0;
+}
+.date-filter {
+  border-color: var(--control-border);
+  min-height: 44px;
+}
+.date-filter select {
+  font-size: 14px;
+  min-height: 42px;
+}
+.custom-dates input {
+  width: 138px;
+  font-size: 14px;
+  min-height: 40px;
+}
+.dialog-content {
+  width: min(680px, calc(100vw - 30px));
+  border-radius: 16px;
+}
+.dialog-overlay {
+  background: #10192380;
+  backdrop-filter: blur(3px);
+}
+.dialog-head p,
+.editor-tabs > button {
+  font-size: 14px;
+}
+.editor-tabs > button {
+  min-height: 42px;
+}
+.calendar-date-nav h2 {
+  font-size: 19px;
+}
+.calendar-jump {
+  font-size: 13px;
+}
+.calendar-jump input {
+  font-size: 14px;
+  min-height: 44px;
+}
+.calendar-options > div > span,
+.calendar-options > label {
+  font-size: 13px;
+}
+.calendar-options > label {
+  min-height: 36px;
+}
+.calendar-cell {
+  padding: 14px 10px;
+  min-height: 310px;
+}
+.calendar-cell.is-today {
+  background: var(--accent-subtle);
+  box-shadow: inset 0 3px var(--accent);
+}
+.calendar-cell-head > div > span {
+  font-size: 13px;
+}
+.calendar-cell-head > button {
+  min-width: 36px;
+  min-height: 36px;
+  border: 1px solid var(--control-border);
+  background: var(--panel);
+  color: var(--soft);
+}
+.workout-card.compact {
+  padding: 14px 10px;
+  background: var(--panel);
+  border-left-width: 3px;
+  border-left-color: var(--running);
+  border-radius: 9px;
+}
+.compact .status-badge {
+  font-size: 12px;
+  padding: 4px 7px;
+}
+.compact > .workout-type,
+.compact .workout-meta {
+  font-size: 12px;
+}
+.compact > strong {
+  font-size: 14px;
+}
+.calendar-grid.month {
+  grid-template-columns: repeat(7, minmax(112px, 1fr));
+  overflow-x: auto;
+}
+.month .compact > strong {
+  font-size: 13px;
+}
+.other-month {
+  opacity: 1;
+  background: var(--bg);
+}
+.other-month .calendar-cell-head {
+  color: var(--muted);
+}
+.calendar-scroll-hint {
+  display: none;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.empty-day {
+  font-size: 13px;
+  min-height: 100px;
+  background: var(--bg);
+}
+.connection-head {
+  flex-wrap: wrap;
+}
+.connection-head h2 {
+  font-size: 21px;
+}
+.connection-head p,
+.connection-status,
+.settings-detail,
+.preference-row strong,
+.preference-row p {
+  font-size: 14px;
+}
+.settings-detail {
+  gap: 16px;
+  align-items: flex-start;
+}
+.settings-detail strong {
+  text-align: right;
+}
+.connection-actions {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.preference-row {
+  gap: 14px;
+}
+.preference-row .btn {
+  font-size: 14px;
+  padding: 10px 12px;
+}
+.toggle {
+  min-height: 26px;
+  min-width: 44px;
+}
+.toggle.on > span {
+  background: var(--on-accent);
+}
+.activity-row {
+  font-size: 14px;
+}
+.activity-title strong {
+  font-size: 15px;
+}
+.activity-title small,
+.activity-title span,
+.activity-table-head {
+  font-size: 13px;
+}
+.detail-metric > .eyebrow {
+  font-size: 12px;
+}
+.form-error,
+.field-error {
+  color: var(--danger);
+  font-size: 14px;
+}
+.form-error {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}
+.login-page {
+  background: var(--bg);
+}
+.login-card {
+  padding: 32px;
+  max-width: 460px;
+}
+.login-card h1 {
+  font-size: 38px;
+  letter-spacing: -1px;
+}
+.login-card > p {
+  font-size: 15px;
+}
+.login-card form label {
+  font-size: 14px;
+}
+.login-card input {
+  min-height: 48px;
+}
+.login-card .helper {
+  font-size: 13px;
+}
+.login-footer {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.page-footer {
+  font-size: 12px;
+}
+.page-footer > span:first-child {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+@media (max-width: 1250px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .training-focus-grid {
+    grid-template-columns: minmax(0, 1.4fr) minmax(250px, 1fr);
+  }
+  .calendar-grid.week {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .week .calendar-cell {
+    border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+  .week .calendar-cell:nth-child(3n) {
+    border-right: 0;
+  }
+  .calendar-scroll-hint {
+    display: block;
+  }
+}
+@media (max-width: 1050px) {
+  .training-focus-grid,
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nav-item {
+    font-size: 14px;
+  }
+  .today-date {
+    display: none;
+  }
+  .week-strip {
+    grid-template-columns: repeat(7, minmax(96px, 1fr));
+    overflow-x: auto;
+  }
+}
+@media (max-width: 800px) {
+  main#main {
+    padding: 0 22px 100px;
+  }
+  .topbar {
+    height: 70px;
+    padding-inline: 22px;
+  }
+  .topbar .btn {
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .breadcrumb {
+    font-size: 13px;
+    gap: 6px;
+  }
+  .topbar-right {
+    gap: 10px;
+  }
+  .sync-indicator {
+    display: none;
+  }
+  .mobile-nav {
+    min-height: 76px;
+    background: var(--sidebar);
+    padding-top: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+  .mobile-nav > a {
+    font-size: 12px;
+    min-height: 52px;
+    min-width: 56px;
+    padding: 4px;
+    border-radius: 8px;
+  }
+  .mobile-nav > a.active {
+    background: var(--accent-subtle);
+  }
+  .page-heading h1 {
+    font-size: 29px;
+  }
+  .page-heading p {
+    font-size: 15px;
+    max-width: 55ch;
+  }
+  .week .calendar-cell {
+    border-right: 1px solid var(--line);
+  }
+  .calendar-grid.week {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .week .calendar-cell:nth-child(2n) {
+    border-right: 0;
+  }
+  .week .calendar-cell:nth-child(3n) {
+    border-right: 1px solid var(--line);
+  }
+}
+@media (max-width: 620px) {
+  main#main {
+    padding-inline: 18px;
+  }
+  .topbar {
+    padding-inline: 18px;
+  }
+  .breadcrumb {
+    font-size: 0;
+    gap: 0;
+  }
+  .breadcrumb > svg {
+    display: none;
+  }
+  .breadcrumb > span {
+    font-size: 14px;
+  }
+  .theme-toggle {
+    padding: 10px;
+    min-width: 44px;
+  }
+  .theme-toggle > span {
+    display: none;
+  }
+  .mode-banner {
+    font-size: 12px;
+    line-height: 1.65;
+    padding-top: 14px;
+  }
+  .mode-banner > a {
+    font-size: 12px;
+    margin-left: 0;
+  }
+  .page-heading {
+    flex-wrap: wrap;
+    padding: 22px 0;
+    gap: 16px;
+  }
+  .page-heading h1 {
+    font-size: 28px;
+  }
+  .page-heading .eyebrow {
+    font-size: 11px;
+  }
+  .page-heading p {
+    font-size: 14px;
+    max-width: none;
+  }
+  .page-heading > .btn {
+    width: 100%;
+    font-size: 14px;
+    gap: 9px;
+    min-height: 44px;
+    margin-top: 0;
+    padding: 11px 16px;
+  }
+  .page-heading > .count-pill {
+    font-size: 12px;
+    margin: 0;
+  }
+  .session-focus,
+  .week-focus {
+    padding: 20px;
+  }
+  .focus-heading {
+    margin-bottom: 18px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .focus-heading h2 {
+    font-size: 19px;
+  }
+  .focus-session {
+    gap: 12px;
+  }
+  .focus-session > .sport-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .focus-session h3 {
+    font-size: 21px;
+  }
+  .focus-bottom {
+    align-items: stretch;
+    gap: 16px;
+  }
+  .focus-bottom > .btn {
+    width: 100%;
+  }
+  .session-facts > span {
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .section-heading h2 {
+    font-size: 20px;
+  }
+  .section-heading p {
+    font-size: 14px;
+    max-width: none;
+  }
+  .date-filter {
+    width: 100%;
+    padding-inline: 10px;
+  }
+  .date-filter select {
+    font-size: 14px;
+    flex: 1;
+  }
+  .custom-dates {
+    flex-wrap: wrap;
+  }
+  .custom-dates input {
+    flex: 1;
+    min-width: 115px;
+    width: auto;
+  }
+  .metric-card {
+    padding: 16px;
+  }
+  .metric-label > span:first-child {
+    font-size: 13px;
+    max-width: none;
+  }
+  .metric-icon {
+    display: none;
+  }
+  .metric-value {
+    font-size: 30px;
+    letter-spacing: -0.6px;
+  }
+  .metric-value > span {
+    font-size: 14px;
+    margin-left: 4px;
+  }
+  .metric-note {
+    font-size: 12px;
+  }
+  .volume-panel {
+    padding: 20px 16px;
+  }
+  .volume-panel .section-title {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .volume-panel .section-title .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.07em;
+  }
+  .volume-panel .section-title h2 {
+    font-size: 20px;
+  }
+  .segmented.small {
+    width: 100%;
+  }
+  .segmented.small button {
+    flex: 1;
+    font-size: 13px;
+    min-height: 40px;
+    padding: 8px;
+  }
+  .chart-summary strong > span,
+  .chart-summary > .muted {
+    font-size: 13px;
+  }
+  .chart-summary > strong {
+    font-size: 28px;
+  }
+  .goal-card {
+    display: flex;
+    padding: 20px;
+  }
+  .goal-card h3 {
+    font-size: 20px;
+  }
+  .goal-card > p,
+  .goal-progress-text,
+  .goal-progress-text strong,
+  .goal-progress-text strong > span {
+    font-size: 14px;
+  }
+  .goal-card .progress-track {
+    height: 10px;
+  }
+  .goal-card > .goal-footnote {
+    font-size: 13px;
+  }
+  .week-strip {
+    grid-template-columns: repeat(7, minmax(96px, 1fr));
+  }
+  .week-day > small {
+    font-size: 12px;
+    max-width: none;
+    white-space: normal;
+  }
+  .week-day > span {
+    font-size: 13px;
+  }
+  .upcoming-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workout-card > strong {
+    font-size: 16px;
+  }
+  .workout-meta,
+  .recent-list strong {
+    font-size: 14px;
+  }
+  .status-badge {
+    font-size: 12px;
+  }
+  .calendar-grid.week {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .week .calendar-cell {
+    padding: 14px 12px;
+    gap: 12px;
+    grid-template-columns: 44px minmax(0, 1fr);
+    border: 1px solid var(--line);
+  }
+  .week .calendar-cell:nth-child(n) {
+    border-right: 1px solid var(--line);
+  }
+  .week .calendar-cell-head > button {
+    min-width: 36px;
+    width: 36px;
+    min-height: 36px;
+  }
+  .week .compact .workout-top {
+    position: static;
+    width: 100%;
+  }
+  .week .compact .workout-top .sport-icon {
+    display: grid;
+  }
+  .week .compact > .workout-type {
+    max-width: none;
+    font-size: 12px;
+    margin-top: 10px;
+  }
+  .week .compact > strong {
+    max-width: none;
+    font-size: 15px;
+  }
+  .week .compact .status-badge,
+  .week .compact .workout-meta {
+    font-size: 12px;
+  }
+  .week .workout-card.compact {
+    padding: 14px 12px;
+  }
+  .calendar-date-nav {
+    width: 100%;
+    gap: 8px;
+  }
+  .calendar-date-nav h2 {
+    font-size: 16px;
+    flex-basis: calc(100% - 110px);
+    order: -1;
+  }
+  .calendar-date-nav .btn-icon {
+    min-height: 44px;
+    height: 44px;
+    width: 44px;
+  }
+  .calendar-date-nav > .btn-sm {
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .calendar-options > div > span,
+  .calendar-options > label {
+    font-size: 13px;
+  }
+  .calendar-jump {
+    font-size: 13px;
+    flex: 1;
+  }
+  .calendar-jump input {
+    font-size: 16px;
+  }
+  .calendar-hint {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 18px;
+  }
+  .calendar-hint p {
+    font-size: 14px;
+  }
+  .text-link {
+    font-size: 14px;
+  }
+  .preference-row {
+    flex-wrap: wrap;
+  }
+  .settings-detail {
+    font-size: 14px;
+  }
+  .login-card {
+    padding: 26px 22px;
+  }
+  .login-card h1 {
+    font-size: 36px;
+  }
+  .login-card > p {
+    font-size: 15px;
+  }
+  .login-card .helper {
+    font-size: 13px;
+  }
+  .page-footer {
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

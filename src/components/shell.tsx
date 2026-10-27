@@ -17,6 +17,7 @@ import {
 import type { ReactNode } from "react";
 import { useTraining } from "./providers";
 import { Button } from "./ui/button";
+import { ThemeToggle } from "./theme-toggle";
 import { dateLabel, localDate } from "@/lib/dates";
 const nav = [
   {
@@ -71,6 +72,7 @@ export function Shell({ children }: { children: ReactNode }) {
               key={n.href}
               href={n.href}
               className={`nav-item ${pathname.startsWith(n.href) ? "active" : ""}`}
+              aria-current={pathname.startsWith(n.href) ? "page" : undefined}
             >
               <n.icon size={19} />
               {n.label}
@@ -126,6 +128,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   ? "Demo workspace"
                   : "Connected"}
             </span>
+            <ThemeToggle compact />
             <Button
               variant="outline"
               size="sm"
@@ -202,6 +205,7 @@ export function Shell({ children }: { children: ReactNode }) {
             href={n.href}
             key={n.href}
             className={pathname.startsWith(n.href) ? "active" : ""}
+            aria-current={pathname.startsWith(n.href) ? "page" : undefined}
           >
             <n.icon size={20} />
             <span>{n.mobile}</span>

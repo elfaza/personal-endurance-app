@@ -121,12 +121,14 @@ export function TrainingCalendar() {
         <div className="segmented">
           <button
             className={view === "week" ? "active" : ""}
+            aria-pressed={view === "week"}
             onClick={() => setView("week")}
           >
             Week
           </button>
           <button
             className={view === "month" ? "active" : ""}
+            aria-pressed={view === "month"}
             onClick={() => setView("month")}
           >
             Month
@@ -157,6 +159,11 @@ export function TrainingCalendar() {
           Show rescheduled history
         </label>
       </div>
+      {view === "month" ? (
+        <p className="calendar-scroll-hint">
+          Scroll sideways to see all seven days.
+        </p>
+      ) : null}
       <section
         className={`calendar-grid ${view}`}
         aria-label={`${view} training calendar`}
