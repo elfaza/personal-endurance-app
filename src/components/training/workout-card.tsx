@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { expectedActivityCount, type Workout } from "@/lib/domain";
 import { dateLabel } from "@/lib/dates";
+import { formatNumber } from "@/lib/format";
 export function SportIcon({
   type,
   size = 20,
@@ -69,10 +70,10 @@ export function WorkoutCard({
             <span>
               {w.distanceKm != null ? (
                 <>
-                  <b>{w.distanceKm}</b> km
+                  <b>{formatNumber(w.distanceKm, 2)}</b> km
                 </>
               ) : w.durationMin ? (
-                `${w.durationMin} min`
+                `${formatNumber(w.durationMin, 1)} min`
               ) : w.durationText ? (
                 `${w.durationText} min`
               ) : (

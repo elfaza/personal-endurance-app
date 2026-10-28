@@ -28,6 +28,7 @@ import { SportIcon } from "@/components/training/workout-card";
 import { WorkoutEditor } from "@/components/training/workout-editor";
 import { dateLabel, duration, pace } from "@/lib/dates";
 import { feedbackForActivity } from "@/lib/measurements";
+import { formatNumber, formatDelta } from "@/lib/format";
 export function ActivityDetail({ id }: { id: string }) {
   const { data, offline, save, notify } = useTraining();
   const editingDisabled = useEditingDisabled();
@@ -144,7 +145,7 @@ export function ActivityDetail({ id }: { id: string }) {
           {
             icon: <SportIcon type={a.type} />,
             label: "DISTANCE",
-            value: a.distanceKm?.toFixed(2) ?? "—",
+            value: formatNumber(a.distanceKm, 2, 2),
             unit: "km",
           },
           {
@@ -156,13 +157,13 @@ export function ActivityDetail({ id }: { id: string }) {
           {
             icon: <Heart size={20} />,
             label: "AVG / MAX HEART RATE",
-            value: `${a.avgHr ?? "—"} / ${a.maxHr ?? "—"}`,
+            value: `${formatNumber(a.avgHr, 0)} / ${formatNumber(a.maxHr, 0)}`,
             unit: "bpm",
           },
           {
             icon: <Mountain size={20} />,
             label: "ELEVATION GAIN",
-            value: String(a.elevationM ?? "—"),
+            value: formatNumber(a.elevationM, 1),
             unit: "m",
           },
         ].map((m) => (
@@ -193,7 +194,7 @@ export function ActivityDetail({ id }: { id: string }) {
                 {a.type === "running"
                   ? `${pace(a.paceSecKm)} /km`
                   : a.durationSec && a.distanceKm
-                    ? `${((a.distanceKm / a.durationSec) * 3600).toFixed(1)} km/h`
+                    ? `${formatNumber((a.distanceKm / a.durationSec) * 3600, 1, 1)} km/h`
                     : "—"}
               </dd>
             </div>
@@ -230,9 +231,9 @@ export function ActivityDetail({ id }: { id: string }) {
               {a.splits.map((s, i) => (
                 <div key={i}>
                   <span>{s.index}</span>
-                  <span>{s.distanceKm.toFixed(2)} km</span>
+                  <span>{formatNumber(s.distanceKm, 2, 2)} km</span>
                   <span>{duration(s.durationSec)}</span>
-                  <span>{s.avgHr ?? "—"}</span>
+                  <span>{formatNumber(s.avgHr, 0)}</span>
                 </div>
               ))}
             </div>
@@ -292,11 +293,15 @@ export function ActivityDetail({ id }: { id: string }) {
                   <span>
                     Planned{" "}
                     <strong>
-                      {comparableTargets ? (workout.distanceKm ?? "—") : "—"} km
+                      {comparableTargets
+                        ? formatNumber(workout.distanceKm, 2)
+                        : "—"}{" "}
+                      km
                     </strong>
                   </span>
                   <span>
-                    Actual <strong>{a.distanceKm?.toFixed(2) ?? "—"} km</strong>
+                    Actual{" "}
+                    <strong>{formatNumber(a.distanceKm, 2, 2)} km</strong>
                   </span>
                 </div>
                 <div className="comparison">
@@ -304,7 +309,9 @@ export function ActivityDetail({ id }: { id: string }) {
                   <span>
                     Planned{" "}
                     <strong>
-                      {comparableTargets ? (workout.durationMin ?? "—") : "—"}{" "}
+                      {comparableTargets
+                        ? formatNumber(workout.durationMin, 1)
+                        : "—"}{" "}
                       min
                     </strong>
                   </span>
@@ -316,8 +323,7 @@ export function ActivityDetail({ id }: { id: string }) {
                 workout.distanceKm != null &&
                 a.distanceKm != null ? (
                   <p className="helper">
-                    {a.distanceKm - workout.distanceKm >= 0 ? "+" : ""}
-                    {(a.distanceKm - workout.distanceKm).toFixed(2)} km compared
+                    {formatDelta(a.distanceKm - workout.distanceKm)} km compared
                     with the planned target.
                   </p>
                 ) : null}

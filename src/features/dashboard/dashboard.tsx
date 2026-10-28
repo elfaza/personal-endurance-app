@@ -30,6 +30,7 @@ import {
   weekStart,
 } from "@/lib/dates";
 import { summarize, weeklySeries } from "@/lib/calculations";
+import { formatNumber } from "@/lib/format";
 import {
   activityIdsForLink,
   expectedActivityCount,
@@ -197,12 +198,16 @@ export function Dashboard() {
                   {actualKm != null ? (
                     <span>
                       <Footprints size={17} />
-                      <strong>{actualKm.toFixed(1)} km</strong> recorded
+                      <strong>{formatNumber(actualKm, 1, 1)} km</strong>{" "}
+                      recorded
                     </span>
                   ) : focus.distanceKm != null ? (
                     <span>
                       <Footprints size={17} />
-                      <strong>{focus.distanceKm} km</strong> target
+                      <strong>
+                        {formatNumber(focus.distanceKm, 2)} km
+                      </strong>{" "}
+                      target
                     </span>
                   ) : null}
                   {actualSeconds != null ? (
@@ -214,7 +219,10 @@ export function Dashboard() {
                     <span>
                       <Timer size={17} />
                       <strong>
-                        {focus.durationMin ?? focus.durationText} min
+                        {focus.durationMin == null
+                          ? focus.durationText
+                          : formatNumber(focus.durationMin, 1)}{" "}
+                        min
                       </strong>{" "}
                       target
                     </span>
@@ -271,7 +279,7 @@ export function Dashboard() {
         <Metric
           icon={<Footprints size={19} />}
           label="Running distance"
-          value={metrics.runningKm.toFixed(1)}
+          value={formatNumber(metrics.runningKm, 1, 1)}
           unit="km"
           note={change(metrics.runningKm, previous.runningKm)}
           color="lime"
@@ -279,7 +287,7 @@ export function Dashboard() {
         <Metric
           icon={<Bike size={19} />}
           label="Cycling distance"
-          value={metrics.cyclingKm.toFixed(1)}
+          value={formatNumber(metrics.cyclingKm, 1, 1)}
           unit="km"
           note={change(metrics.cyclingKm, previous.cyclingKm)}
           color="purple"
@@ -332,10 +340,10 @@ export function Dashboard() {
           <div className="chart-summary">
             <strong>
               {chart === "distance"
-                ? (metrics.runningKm + metrics.cyclingKm).toFixed(1)
+                ? formatNumber(metrics.runningKm + metrics.cyclingKm, 1, 1)
                 : chart === "pace"
                   ? pace(metrics.pace)
-                  : (metrics.avgHr ?? "—")}
+                  : formatNumber(metrics.avgHr, 0)}
               <span>
                 {chart === "distance"
                   ? "km covered"
@@ -479,7 +487,7 @@ export function Dashboard() {
                   </div>
                   <div className="recent-distance">
                     <strong>
-                      {a.distanceKm?.toFixed(1) ?? "—"}
+                      {formatNumber(a.distanceKm, 1, 1)}
                       <small> km</small>
                     </strong>
                     <ArrowUpRight size={15} />
@@ -502,12 +510,12 @@ export function Dashboard() {
         </span>
         <span>
           <Heart size={16} />
-          {metrics.avgHr ?? "—"}{" "}
-          <small>bpm average · {metrics.maxHr ?? "—"} max</small>
+          {formatNumber(metrics.avgHr, 0)}{" "}
+          <small>bpm average · {formatNumber(metrics.maxHr, 0)} max</small>
         </span>
         <span>
           <ArrowDownRight size={16} />
-          {metrics.longestRun.toFixed(1)}{" "}
+          {formatNumber(metrics.longestRun, 1, 1)}{" "}
           <small>km longest run in this period</small>
         </span>
       </div>

@@ -6,6 +6,7 @@ import { useTraining, useEditingDisabled } from "./providers";
 import { Button } from "./ui/button";
 import { Dialog } from "./ui/dialog";
 import { localDate } from "@/lib/dates";
+import { formatNumber } from "@/lib/format";
 export function GoalCard({
   goal,
   compact = false,
@@ -82,7 +83,7 @@ export function GoalCard({
           </span>
         ) : null}
         <div className="goal-distance">
-          {goal?.distanceKm ?? 21.1}
+          {formatNumber(goal?.distanceKm ?? 21.1, 2)}
           <span>km</span>
         </div>
         <p>
@@ -98,7 +99,8 @@ export function GoalCard({
             <div className="goal-progress-text">
               <span>Longest run</span>
               <strong>
-                {longest.toFixed(1)} <span>/ {goal.distanceKm} km</span>
+                {formatNumber(longest, 1, 1)}{" "}
+                <span>/ {formatNumber(goal.distanceKm, 2)} km</span>
               </strong>
             </div>
             <div className="progress-track">

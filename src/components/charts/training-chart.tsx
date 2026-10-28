@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { dateLabel, pace } from "@/lib/dates";
 import type { weeklySeries } from "@/lib/calculations";
+import { formatNumber } from "@/lib/format";
 export function TrainingChart({
   series,
   metric = "distance",
@@ -87,7 +88,12 @@ export function TrainingChart({
             tickLine={false}
             tick={{ fill: "var(--muted)", fontSize: 12 }}
             tickFormatter={(v) =>
-              metric === "pace" ? pace(Number(v)) : String(v)
+              metric === "pace"
+                ? pace(Number(v))
+                : formatNumber(
+                    Number(v),
+                    metric === "heart" || metric === "consistency" ? 0 : 1,
+                  )
             }
             domain={metric === "consistency" ? [0, 100] : undefined}
           />
@@ -103,7 +109,7 @@ export function TrainingChart({
             formatter={(v, name) => [
               metric === "pace"
                 ? `${pace(Number(v))} /km`
-                : `${Math.round(Number(v) * 10) / 10}${metric === "distance" ? " km" : metric === "heart" ? " bpm" : metric === "volume" ? " min" : "%"}`,
+                : `${formatNumber(v == null ? null : Number(v), metric === "heart" || metric === "consistency" ? 0 : 1)}${metric === "distance" ? " km" : metric === "heart" ? " bpm" : metric === "volume" ? " min" : "%"}`,
               name,
             ]}
           />

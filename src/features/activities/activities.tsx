@@ -6,6 +6,7 @@ import { useTraining } from "@/components/providers";
 import { SportIcon } from "@/components/training/workout-card";
 import { dateLabel, duration, pace } from "@/lib/dates";
 import { activityIdsForLink } from "@/lib/domain";
+import { formatNumber } from "@/lib/format";
 export function Activities() {
   const { data } = useTraining();
   const [search, setSearch] = useState("");
@@ -151,7 +152,7 @@ export function Activities() {
               </div>
             </div>
             <span className="activity-distance">
-              {a.distanceKm?.toFixed(2) ?? "—"}
+              {formatNumber(a.distanceKm, 2, 2)}
               <small> km</small>
             </span>
             <span>{duration(a.durationSec)}</span>
@@ -159,11 +160,11 @@ export function Activities() {
               {a.type === "running"
                 ? `${pace(a.paceSecKm)} /km`
                 : a.distanceKm != null && a.durationSec
-                  ? `${(a.distanceKm / (a.durationSec / 3600)).toFixed(1)} km/h`
+                  ? `${formatNumber(a.distanceKm / (a.durationSec / 3600), 1, 1)} km/h`
                   : "—"}
             </span>
             <span>
-              {a.avgHr ?? "—"}
+              {formatNumber(a.avgHr, 0)}
               <small> bpm</small>
             </span>
             <ArrowUpRight size={17} />

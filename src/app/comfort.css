@@ -333,6 +333,19 @@ main#main {
   font-size: 13px;
   line-height: 1.5;
 }
+.detail-metrics .metric-card {
+  min-width: 0;
+}
+.detail-metrics .metric-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  overflow-wrap: anywhere;
+}
+.detail-metrics .metric-value > span {
+  margin-left: 0;
+}
 .dashboard-grid {
   grid-template-columns: minmax(0, 1.8fr) minmax(280px, 1fr);
   gap: 18px;

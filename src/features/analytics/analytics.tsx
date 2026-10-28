@@ -9,6 +9,7 @@ import { addDays, duration, localDate, pace, weekStart } from "@/lib/dates";
 import { summarize, weeklySeries } from "@/lib/calculations";
 import { trainingLoads } from "@/lib/measurements";
 import { activityIdsForLink } from "@/lib/domain";
+import { formatNumber } from "@/lib/format";
 const TrainingChart = dynamic(
   () =>
     import("@/components/charts/training-chart").then((m) => m.TrainingChart),
@@ -80,15 +81,15 @@ export function Analytics() {
         {[
           {
             label: "RUNNING",
-            value: `${m.runningKm.toFixed(1)} km`,
+            value: `${formatNumber(m.runningKm, 1, 1)} km`,
             icon: <Footprints size={18} />,
-            note: `${monthly.runningKm.toFixed(1)} km this calendar month`,
+            note: `${formatNumber(monthly.runningKm, 1, 1)} km this calendar month`,
           },
           {
             label: "CYCLING",
-            value: `${m.cyclingKm.toFixed(1)} km`,
+            value: `${formatNumber(m.cyclingKm, 1, 1)} km`,
             icon: <Bike size={18} />,
-            note: `${monthly.cyclingKm.toFixed(1)} km this calendar month`,
+            note: `${formatNumber(monthly.cyclingKm, 1, 1)} km this calendar month`,
           },
           {
             label: "TIME IN MOTION",
@@ -155,7 +156,7 @@ export function Analytics() {
           </span>
           <h2>Session training load</h2>
           <div className="load-value">
-            {loadSessions.length ? Math.round(load) : "—"}
+            {loadSessions.length ? formatNumber(load, 0) : "—"}
             <span>arbitrary units</span>
           </div>
           <p>
@@ -168,10 +169,11 @@ export function Analytics() {
           <p className="helper">
             {loadSessions.length} of {filtered.activities.length} recorded
             activities have enough data. Cycling contributes{" "}
-            {Math.round(
+            {formatNumber(
               loadSessions
                 .filter((a) => a.type === "cycling")
                 .reduce((s, a) => s + a.load, 0),
+              0,
             )}{" "}
             units. Missing RPE is excluded. A shared session RPE applies to each
             linked activity unless an activity has its own journal.

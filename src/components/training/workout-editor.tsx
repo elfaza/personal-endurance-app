@@ -26,6 +26,7 @@ import { useTraining, useEditingDisabled } from "../providers";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import { WorkoutJournal } from "./workout-journal";
+import { formatNumber } from "@/lib/format";
 type EditorProps = {
   open: boolean;
   onClose: () => void;
@@ -501,11 +502,11 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
                 <div className="full">
                   <strong>Recorded in Training Plan</strong>
                   <p className="helper">
-                    {w.recordedResult.distanceKm ?? "—"} km ·{" "}
-                    {w.recordedResult.durationMin?.toFixed(1) ?? "—"} min · HR{" "}
-                    {w.recordedResult.avgHr ?? "—"} /{" "}
-                    {w.recordedResult.maxHr ?? "—"}. These are source results,
-                    separate from the workout targets.
+                    {formatNumber(w.recordedResult.distanceKm, 2)} km ·{" "}
+                    {formatNumber(w.recordedResult.durationMin, 1)} min · HR{" "}
+                    {formatNumber(w.recordedResult.avgHr, 0)} /{" "}
+                    {formatNumber(w.recordedResult.maxHr, 0)}. These are source
+                    results, separate from the workout targets.
                   </p>
                 </div>
               ) : null}
@@ -571,8 +572,8 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
                     .toSorted((a, b) => b.date.localeCompare(a.date))
                     .map((a) => (
                       <option key={a.id} value={a.id}>
-                        {a.date} · {a.title} · {a.distanceKm?.toFixed(1) ?? "—"}{" "}
-                        km
+                        {a.date} · {a.title} ·{" "}
+                        {formatNumber(a.distanceKm, 1, 1)} km
                       </option>
                     ))}
                 </select>
