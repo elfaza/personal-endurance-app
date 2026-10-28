@@ -5,6 +5,7 @@ import { ArrowUpRight, Footprints, Search } from "lucide-react";
 import { useTraining } from "@/components/providers";
 import { SportIcon } from "@/components/training/workout-card";
 import { dateLabel, duration, pace } from "@/lib/dates";
+import { activityIdsForLink } from "@/lib/domain";
 export function Activities() {
   const { data } = useTraining();
   const [search, setSearch] = useState("");
@@ -21,7 +22,7 @@ export function Activities() {
           data.workouts.find((w) => w.id === l.workoutId)?.type ===
           "Bike-to-Work",
       )
-      .map((l) => l.activityId),
+      .flatMap(activityIdsForLink),
   );
   const activities = data.activities
     .filter(
@@ -142,7 +143,8 @@ export function Activities() {
                     year: "numeric",
                   })}{" "}
                   · {a.rawType.replaceAll("_", " ")}
-                  {data.links.some((l) => l.activityId === a.id)
+                  {a.source === "sheet" ? " · Google Sheets · manual" : ""}
+                  {data.links.some((l) => activityIdsForLink(l).includes(a.id))
                     ? " · Linked"
                     : ""}
                 </span>

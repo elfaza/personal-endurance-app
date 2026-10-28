@@ -7,6 +7,8 @@ import { DateFilter, initialRange } from "@/components/date-filter";
 import { GoalCard } from "@/components/goal-card";
 import { addDays, duration, localDate, pace, weekStart } from "@/lib/dates";
 import { summarize, weeklySeries } from "@/lib/calculations";
+import { trainingLoads } from "@/lib/measurements";
+import { activityIdsForLink } from "@/lib/domain";
 const TrainingChart = dynamic(
   () =>
     import("@/components/charts/training-chart").then((m) => m.TrainingChart),
@@ -46,21 +48,16 @@ export function Analytics() {
           range.end,
           Math.min(54, Math.ceil(days / 7) + 1),
         );
-  const loadSessions = filtered.activities.flatMap((a) => {
-    const link = data.links.find((l) => l.activityId === a.id);
-    const f = data.feedback.find(
-      (f) => f.activityId === a.id || (link && f.workoutId === link.workoutId),
-    );
-    return f?.rpe && a.durationSec != null
-      ? [{ id: a.id, load: (f.rpe * a.durationSec) / 60, type: a.type }]
-      : [];
+  const loadSessions = trainingLoads({
+    ...data,
+    activities: filtered.activities,
   });
   const load = loadSessions.reduce((s, a) => s + a.load, 0);
   const month = localDate().slice(0, 7);
   const monthly = summarize(data, `${month}-01`, `${month}-31`);
   const commutes = data.links.filter(
     (l) =>
-      filtered.activities.some((a) => a.id === l.activityId) &&
+      filtered.activities.some((a) => activityIdsForLink(l).includes(a.id)) &&
       data.workouts.some(
         (w) => w.id === l.workoutId && w.type === "Bike-to-Work",
       ),
@@ -176,7 +173,8 @@ export function Analytics() {
                 .filter((a) => a.type === "cycling")
                 .reduce((s, a) => s + a.load, 0),
             )}{" "}
-            units. Missing RPE is excluded.
+            units. Missing RPE is excluded. A shared session RPE applies to each
+            linked activity unless an activity has its own journal.
           </p>
           <p className="helper">
             This is your session-RPE estimate. It is not Garmin’s proprietary

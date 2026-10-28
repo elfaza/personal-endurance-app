@@ -15,6 +15,7 @@ import {
   activityIdsForLink,
   activityFitsWorkout,
   expectedActivityCount,
+  recordedResultInput,
 } from "../domain";
 import { addDays, localDate } from "../dates";
 import {
@@ -27,6 +28,9 @@ import { type Change, type Snapshot, type Stored } from "../google-sheets/rows";
 import { configuration } from "./config";
 import { repository, withLock } from "./repository";
 import { AppError } from "./errors";
+import { manualActivities } from "../measurements";
+import { historicalLinkChanges } from "../google-sheets/reconcile";
+import { sheets } from "../google-sheets/client";
 
 const payload = (value: object) => value as Record<string, unknown>;
 function decode<T>(
@@ -43,6 +47,7 @@ const storedWorkout = workoutInput.extend({
   rescheduledTo: z.string().optional(),
   linkedActivityId: z.string().optional(),
   completionSource: z.enum(["manual", "garmin"]).optional(),
+  recordedResult: recordedResultInput.optional(),
 });
 const storedActivity = z.object({
   id: z.string(),
@@ -57,6 +62,7 @@ const storedActivity = z.object({
   avgHr: z.number().nullable(),
   maxHr: z.number().nullable(),
   elevationM: z.number().nullable(),
+  calories: z.number().nonnegative().nullable().optional(),
   paceSecKm: z.number().nullable(),
   splits: z.array(
     z.object({
@@ -98,13 +104,17 @@ export function toData(snapshot: Snapshot, initialized: boolean): AppData {
         })
         .parse(syncRecord.payload)
     : { lastSuccess: null, count: 0, error: null };
+  const activities = decode(snapshot.Activities, (v) =>
+    storedActivity.parse(v),
+  ) as Activity[];
   return {
     mode: config.mode,
     workouts,
     links,
-    activities: decode(snapshot.Activities, (v) =>
-      storedActivity.parse(v),
-    ) as Activity[],
+    activities: [
+      ...activities,
+      ...manualActivities(workouts, activities, links),
+    ],
     feedback: decode(snapshot.Feedback, (v) =>
       feedbackInput.parse(v),
     ) as Feedback[],
@@ -116,12 +126,27 @@ export function toData(snapshot: Snapshot, initialized: boolean): AppData {
       initialized,
       readOnly: config.readOnly,
       planSource: snapshot.trainingPlan ? "training-plan" : "pe-workouts",
+      trackerSources: !!snapshot.tracker,
     },
   };
 }
 export async function getData() {
   const { snapshot, initialized } = await repository().read();
   return toData(snapshot, initialized);
+}
+export async function reconcileTracker() {
+  return withLock(async () => {
+    await sheets.enableTracker();
+    const repo = repository();
+    const { snapshot } = await repo.read();
+    const changes = historicalLinkChanges(snapshot);
+    await repo.commit(changes, randomUUID(), snapshot);
+    return {
+      ok: true,
+      linkedSessions: changes.filter((c) => c.dataset === "ActivityLinks")
+        .length,
+    };
+  });
 }
 const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("week-template"), start: dateSchema }),
@@ -235,6 +260,19 @@ export async function mutate(input: unknown, op: string) {
         }),
       });
     } else if (cmd.action === "feedback") {
+      if (
+        cmd.feedback.scope === "activity" &&
+        (!cmd.feedback.activityId ||
+          !data.links.some(
+            (l) =>
+              l.workoutId === cmd.feedback.workoutId &&
+              activityIdsForLink(l).includes(cmd.feedback.activityId!),
+          ))
+      )
+        throw new AppError(
+          "Choose an activity linked to this session before saving its journal.",
+          409,
+        );
       if (
         cmd.feedback.workoutId &&
         !data.workouts.some((w) => w.id === cmd.feedback.workoutId)
@@ -378,7 +416,14 @@ export async function mutate(input: unknown, op: string) {
             throw new AppError(
               "Choose an active training session before linking.",
             );
-          if (ids.some((id) => !data.activities.some((a) => a.id === id)))
+          if (
+            ids.some(
+              (id) =>
+                !data.activities.some(
+                  (a) => a.id === id && a.source !== "sheet",
+                ),
+            )
+          )
             throw new AppError("Activity not found.", 404);
           if (
             ids.some((id) => {
@@ -503,7 +548,14 @@ export async function syncGarmin(input: { start?: string; end?: string } = {}) {
               },
             ];
       });
-      const reserved = new Set(data.links.flatMap(activityIdsForLink));
+      const historical = historicalLinkChanges(snapshot);
+      changes.push(...historical);
+      const reserved = new Set([
+        ...data.links.flatMap(activityIdsForLink),
+        ...historical
+          .filter((c) => c.dataset === "ActivityLinks")
+          .flatMap((c) => c.payload.activityIds as string[]),
+      ]);
       const unlinked = activities.filter((a) => !reserved.has(a.id));
       const knownActivities = [
         ...new Map(
@@ -581,7 +633,7 @@ export async function activityDetail(id: string) {
     const data = toData(snapshot, initialized);
     const cached = data.activities.find((a) => a.id === id);
     if (!cached) throw new AppError("Activity not found. Sync it first.", 404);
-    if (data.mode === "demo") return cached;
+    if (data.mode === "demo" || cached.source === "sheet") return cached;
     if (!/^\d+$/.test(id)) throw new AppError("Invalid Garmin activity ID.");
     const detail = await garmin().detail(id);
     const merged = { ...detail, hrZones: cached.hrZones };

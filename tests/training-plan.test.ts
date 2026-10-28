@@ -138,7 +138,12 @@ function fakePlanGoogle() {
               delete dest[col].formattedValue;
             }
           }
-        } else if (!r.appendDimension) throw new Error("Unexpected request");
+        } else if (
+          !r.appendDimension &&
+          !r.repeatCell &&
+          !r.updateSpreadsheetProperties
+        )
+          throw new Error("Unexpected request");
       }
       tabs = next;
       return response({ replies: [] });
@@ -153,15 +158,16 @@ function fakePlanGoogle() {
         })),
       });
     if (u.searchParams.get("includeGridData")) {
-      onRead?.(++gridReads);
-      const tab = tabs.find((t) => t.id === 10)!;
+      const range = u.searchParams.get("ranges") ?? "";
+      const tab = tabs.find((t) => range.startsWith(`'${t.title}'!`))!;
+      if (tab.id === 10) onRead?.(++gridReads);
       return response({
         sheets: [
           {
-            properties: { sheetId: 10, title: tab.title },
+            properties: { sheetId: tab.id, title: tab.title },
             data: [
               {
-                rowData: tab.rows.map((values) => ({
+                rowData: Array.from(tab.rows, (values = []) => ({
                   values: Array.from(
                     { length: values.length },
                     (_, i) => values[i] ?? {},
@@ -211,6 +217,127 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("Training Plan is the canonical calendar", () => {
+  it("exposes source-only RPE as an editable journal with valid first-write history", async () => {
+    const google = fakePlanGoogle(),
+      client = new SheetsClient(google.http),
+      repo = new SheetsRepository(client);
+    google.source().rows[1][12] = cell(6);
+    await client.enableTrainingPlan();
+    let snapshot = (await repo.read()).snapshot;
+    const feedback = snapshot.Feedback[0];
+    expect(feedback).toMatchObject({
+      synthetic: true,
+      payload: { rpe: 6, scope: "session" },
+    });
+    await repo.commit(
+      [
+        {
+          dataset: "Feedback",
+          id: feedback.id,
+          expected: feedback.fingerprint,
+          payload: { ...feedback.payload, rpe: 7 },
+        },
+      ],
+      "source-journal-save",
+      snapshot,
+    );
+    snapshot = (await repo.read()).snapshot;
+    expect(snapshot.Feedback[0].payload.rpe).toBe(7);
+    expect(snapshot.Feedback[0].synthetic).toBeUndefined();
+    expect(cellValue(google.source().rows[1][12])).toBe(7);
+  });
+  it("connects log and roadmap in a fenced batch and preserves goal revision history and external-edit checks", async () => {
+    const google = fakePlanGoogle(),
+      client = new SheetsClient(google.http),
+      repo = new SheetsRepository(client);
+    google.tabs().push(
+      {
+        id: 20,
+        title: "Workout Log",
+        rows: [
+          [
+            "Date",
+            "Activity",
+            "Distance km",
+            "Duration min",
+            "Avg HR",
+            "Max HR",
+            "Elevation gain m",
+            "Calories",
+            "HR drift",
+            "Notes",
+          ].map(cell),
+        ],
+      },
+      {
+        id: 21,
+        title: "HM Roadmap 2027",
+        rows: [
+          [
+            "Period",
+            "Long-run target (km)",
+            "Primary focus",
+            "Gate / notes",
+          ].map(cell),
+          [
+            "Late Jan 2027",
+            "21.1 race attempt (conditional)",
+            "Finish comfortably",
+            "Recovery first",
+          ].map(cell),
+        ],
+      },
+      {
+        id: 22,
+        title: "Dashboard",
+        rows: [["Dashboard", "Value"].map(cell)],
+      },
+    );
+    await client.enableTrainingPlan();
+    await client.enableTracker();
+    let snapshot = (await repo.read()).snapshot;
+    expect(snapshot.tracker).toBeDefined();
+    const goal = snapshot.Goals[0];
+    expect(goal.payload.targetMonth).toBe("2027-01");
+    const change = {
+      dataset: "Goals" as const,
+      id: goal.id,
+      expected: goal.fingerprint,
+      payload: { ...goal.payload, targetMonth: "2027-02" },
+    };
+    await repo.commit([change], "goal-first", snapshot);
+    snapshot = (await repo.read()).snapshot;
+    expect(snapshot.Goals[0].payload.targetMonth).toBe("2027-02");
+    expect(snapshot.tracker!.goalShadow).toHaveLength(1);
+    await repo.commit(
+      [
+        {
+          ...change,
+          expected: snapshot.Goals[0].fingerprint,
+          payload: { ...snapshot.Goals[0].payload, title: "Changed twice" },
+        },
+      ],
+      "goal-second",
+      snapshot,
+    );
+    const latest = (await repo.read()).snapshot;
+    expect(latest.tracker!.goalShadow).toHaveLength(1);
+    expect(latest.Goals[0].payload.title).toBe("Changed twice");
+    google.tabs().find((t) => t.id === 21)!.rows[1][3] = cell(
+      "External recovery note",
+    );
+    await expect(
+      repo.commit(
+        [{ ...change, expected: latest.Goals[0].fingerprint }],
+        "goal-stale",
+        latest,
+      ),
+    ).rejects.toThrow("changed elsewhere");
+    expect(cellValue(google.tabs().find((t) => t.id === 21)!.rows[1][3])).toBe(
+      "External recovery note",
+    );
+    expect(google.tabs().some((t) => t.title === WRITE_LOCK_TITLE)).toBe(false);
+  });
   it.each([null, 7])(
     "preserves pre-connection journal RPE when the source starts at %s, then follows saved edits and explicit clears",
     async (sourceRpe) => {

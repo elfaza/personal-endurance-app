@@ -14,6 +14,7 @@ import {
 } from "../google-sheets/rows";
 import { sheets } from "../google-sheets/client";
 import { planWriteRequests } from "../google-sheets/training-plan";
+import { trackerWriteRequests } from "../google-sheets/tracker";
 import { configuration } from "./config";
 import { AppError } from "./errors";
 
@@ -107,7 +108,12 @@ function prepare(snapshot: Snapshot, changes: Change[], op: string) {
       c.dataset === "Workouts" && snapshot.trainingPlan
         ? (snapshot.trainingPlan.shadow.find((r) => r.id === c.id)?.revision ??
           "")
-        : (current?.revision ?? ""),
+        : c.dataset === "Goals" && snapshot.tracker
+          ? (snapshot.tracker.goalShadow.find((r) => r.id === c.id)?.revision ??
+            "")
+          : current?.synthetic
+            ? ""
+            : (current?.revision ?? ""),
       now,
       String(c.deleted ?? false),
       JSON.stringify(c.payload),
@@ -119,14 +125,15 @@ function prepare(snapshot: Snapshot, changes: Change[], op: string) {
   });
 }
 function snapshotFingerprint(snapshot: Snapshot) {
-  return JSON.stringify(
-    datasets.map((d) => [
+  return JSON.stringify([
+    snapshot.tracker?.hash ?? "",
+    ...datasets.map((d) => [
       d,
       snapshot[d]
         .map((r) => [r.id, r.fingerprint])
         .sort((a, b) => a[0].localeCompare(b[0])),
     ]),
-  );
+  ]);
 }
 export class DemoRepository implements Repository {
   async read() {
@@ -196,8 +203,12 @@ export class SheetsRepository implements Repository {
       await this.client.append(
         rows,
         commit,
-        planWriteRequests(snapshot, changes),
+        [
+          ...planWriteRequests(snapshot, changes),
+          ...trackerWriteRequests(snapshot, changes),
+        ],
         snapshot.trainingPlan,
+        snapshot.tracker,
       );
     });
   }

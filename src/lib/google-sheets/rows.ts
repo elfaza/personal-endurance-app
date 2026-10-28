@@ -20,6 +20,7 @@ export interface Stored {
   payload: Record<string, unknown>;
   operationId: string;
   fingerprint: string;
+  synthetic?: boolean;
 }
 export interface Change {
   dataset: Dataset;
@@ -30,6 +31,7 @@ export interface Change {
 }
 export type Snapshot = Record<Dataset, Stored[]> & {
   trainingPlan?: import("./training-plan").TrainingPlanState;
+  tracker?: import("./tracker").TrackerState;
 };
 export function fingerprint(row: string[]) {
   return createHash("sha256")

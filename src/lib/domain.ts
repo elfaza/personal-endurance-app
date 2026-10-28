@@ -60,10 +60,19 @@ export type Workout = WorkoutInput & {
   linkedActivityId?: string;
   linkedActivityIds?: string[];
   completionSource?: "manual" | "garmin";
+  recordedResult?: RecordedResult;
 };
+export const recordedResultInput = z.object({
+  distanceKm: z.number().nonnegative().nullable(),
+  durationMin: z.number().nonnegative().nullable(),
+  avgHr: z.number().nonnegative().nullable(),
+  maxHr: z.number().nonnegative().nullable(),
+});
+export type RecordedResult = z.infer<typeof recordedResultInput>;
 export const feedbackInput = z.object({
   workoutId: z.string().max(100).optional(),
   activityId: z.string().max(100).optional(),
+  scope: z.enum(["session", "activity"]).optional(),
   date: dateSchema,
   rpe: z.number().int().min(1).max(10).nullable(),
   energy: z.number().int().min(1).max(5).nullable(),
@@ -90,6 +99,7 @@ export interface Activity {
   avgHr: number | null;
   maxHr: number | null;
   elevationM: number | null;
+  calories?: number | null;
   paceSecKm: number | null;
   splits: {
     index: number;
@@ -98,7 +108,9 @@ export interface Activity {
     avgHr: number | null;
   }[];
   hrZones: { zone: number; seconds: number }[];
-  source: "garmin" | "demo";
+  source: "garmin" | "demo" | "sheet";
+  sourceWorkoutId?: string;
+  timeKnown?: boolean;
 }
 export const goalInput = z.object({
   title: z.string().trim().min(1).max(120),
@@ -106,6 +118,8 @@ export const goalInput = z.object({
   targetMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
   date: dateSchema.nullable(),
   targetTimeMin: z.number().positive().nullable(),
+  notes: z.string().max(2000).optional(),
+  priority: z.enum(["primary", "backup", "other"]).optional(),
 });
 export type Goal = z.infer<typeof goalInput> & { id: string; revision: string };
 export interface ActivityLink {
@@ -159,6 +173,7 @@ export interface AppData {
     initialized: boolean;
     readOnly?: boolean;
     planSource?: "training-plan" | "pe-workouts";
+    trackerSources?: boolean;
   };
 }
 export type Dataset =

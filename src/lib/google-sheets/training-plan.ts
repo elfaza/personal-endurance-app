@@ -30,6 +30,7 @@ export const PLAN_COLUMNS = [
 export const PLAN_ID = "PE_ID",
   PLAN_METADATA = "PE_Metadata";
 export interface PlanCell {
+  note?: string;
   userEnteredValue?: {
     stringValue?: string;
     numberValue?: number;
@@ -270,7 +271,12 @@ export function readPlan(state: TrainingPlanState): Stored[] {
       durationMin: numberOrNull(read("Target min")),
       durationText,
       status,
-      optional: ["Optional", "Tentative"].includes(rawStatus),
+      optional:
+        ["Optional", "Tentative"].includes(rawStatus) ||
+        (["Completed", "Skipped", "Modified", "Partially Completed"].includes(
+          rawStatus,
+        ) &&
+          meta.optional === true),
       notes: String(read("Notes")),
       createdAt:
         typeof meta.createdAt === "string"
@@ -299,6 +305,12 @@ export function readPlan(state: TrainingPlanState): Stored[] {
         completionSource: payload.completionSource,
         rescheduledFrom: meta.rescheduledFrom,
         rescheduledTo: meta.rescheduledTo,
+        recordedResult: {
+          distanceKm: numberOrNull(read("Actual km")),
+          durationMin: numberOrNull(read("Actual min")),
+          avgHr: numberOrNull(read("Avg HR")),
+          maxHr: numberOrNull(read("Max HR")),
+        },
       },
       operationId: "training-plan",
       fingerprint: rowFingerprint,
@@ -538,7 +550,10 @@ export function planWriteRequests(snapshot: Snapshot, changes: Change[]) {
     put(row, "Max HR", max.length ? Math.max(...max) : null);
   }
   for (const c of changes.filter(
-    (c) => c.dataset === "Feedback" && c.payload.workoutId,
+    (c) =>
+      c.dataset === "Feedback" &&
+      c.payload.workoutId &&
+      c.payload.scope !== "activity",
   )) {
     const row = positions.get(String(c.payload.workoutId));
     if (row == null) continue;

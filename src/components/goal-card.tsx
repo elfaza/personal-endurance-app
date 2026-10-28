@@ -45,6 +45,8 @@ export function GoalCard({
           targetTimeMin: f.get("targetTimeMin")
             ? Number(f.get("targetTimeMin"))
             : null,
+          notes: f.get("notes") ?? "",
+          priority: f.get("priority") ?? "other",
         },
       });
       notify("Training goal saved");
@@ -72,6 +74,13 @@ export function GoalCard({
           </button>
         </div>
         <h3>{goal?.title ?? "Something to run toward"}</h3>
+        {goal?.priority && goal.priority !== "other" ? (
+          <span className="helper">
+            {goal.priority === "backup"
+              ? "Backup goal"
+              : "Primary goal · conditional"}
+          </span>
+        ) : null}
         <div className="goal-distance">
           {goal?.distanceKm ?? 21.1}
           <span>km</span>
@@ -83,6 +92,7 @@ export function GoalCard({
               : `${new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(new Date(`${goal.targetMonth}-01T12:00:00+07:00`))} · flexible target`
             : "Add a race, a distance, or a new adventure."}
         </p>
+        {goal?.notes ? <p className="helper">{goal.notes}</p> : null}
         {goal ? (
           <>
             <div className="goal-progress-text">
@@ -157,6 +167,22 @@ export function GoalCard({
               type="number"
               min="1"
               defaultValue={goal?.targetTimeMin ?? ""}
+            />
+          </label>
+          <label>
+            Goal priority
+            <select name="priority" defaultValue={goal?.priority ?? "other"}>
+              <option value="primary">Primary</option>
+              <option value="backup">Backup</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label className="full">
+            Conditions / notes
+            <textarea
+              name="notes"
+              maxLength={2000}
+              defaultValue={goal?.notes ?? ""}
             />
           </label>
           <Button className="full" disabled={busy || editingDisabled}>

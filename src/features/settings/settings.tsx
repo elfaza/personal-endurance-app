@@ -94,6 +94,21 @@ export function Settings() {
       setInitializing(false);
     }
   }
+  async function connectTracker() {
+    setInitializing(true);
+    setError("");
+    try {
+      await request("/api/sheets/reconcile", {});
+      await refresh();
+      notify(
+        "Tracker tabs synchronized. Existing history and original measurements were retained.",
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setInitializing(false);
+    }
+  }
   function cacheToggle() {
     const next = !cache;
     setCache(next);
@@ -207,6 +222,23 @@ export function Settings() {
                 <strong>Refresh on focus & reconnect</strong>
               </div>
               <div className="connection-actions">
+                {data.configured.planSource === "training-plan" ? (
+                  <Button
+                    onClick={() => void connectTracker()}
+                    disabled={
+                      offline ||
+                      initializing ||
+                      data.mode === "demo" ||
+                      data.configured.readOnly
+                    }
+                  >
+                    {initializing
+                      ? "Synchronizing…"
+                      : data.configured.trackerSources
+                        ? "Reconcile tracker tabs"
+                        : "Connect Workout Log & roadmap"}
+                  </Button>
+                ) : null}
                 {data.configured.initialized &&
                 data.configured.planSource !== "training-plan" ? (
                   <Button
@@ -239,6 +271,13 @@ export function Settings() {
                   </Link>
                 </Button>
               </div>
+              {data.configured.trackerSources ? (
+                <p className="helper">
+                  Workout Log mirrors recorded activities. Race goals read and
+                  write the HM Roadmap; Dashboard formulas use the same weekly
+                  definitions as the web.
+                </p>
+              ) : null}
             </>
           )}
           {error ? (
@@ -265,7 +304,7 @@ export function Settings() {
               ))}
               <p className="helper">
                 {data.configured.planSource === "training-plan"
-                  ? "Training Plan is connected. Keep PE_ID and PE_Metadata columns when your weekly schedule updates the sheet."
+                  ? "Training Plan is connected. Keep existing PE columns and formulas when your weekly schedule updates the sheet."
                   : "Connect Training Plan for weekly updates, or import another tracker once using the mapping below."}
               </p>
               {data.configured.initialized &&

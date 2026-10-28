@@ -12,6 +12,7 @@ const measurements = z
     averageHR: metric,
     maxHR: metric,
     elevationGain: metric,
+    calories: metric,
   })
   .passthrough();
 const activityType = z.object({
@@ -89,6 +90,7 @@ export function normalizeActivity(raw: unknown, detail = false): Activity {
     avgHr: s.averageHR || null,
     maxHr: s.maxHR || null,
     elevationM: s.elevationGain ?? null,
+    ...(s.calories != null ? { calories: s.calories } : {}),
     paceSecKm:
       type === "running" && distanceKm && durationSec != null
         ? durationSec / distanceKm

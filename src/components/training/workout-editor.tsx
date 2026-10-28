@@ -8,7 +8,6 @@ import {
   Check,
   Copy,
   Link2,
-  NotebookPen,
   SkipForward,
   Trash2,
 } from "lucide-react";
@@ -26,6 +25,7 @@ import { localDate } from "@/lib/dates";
 import { useTraining, useEditingDisabled } from "../providers";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
+import { WorkoutJournal } from "./workout-journal";
 type EditorProps = {
   open: boolean;
   onClose: () => void;
@@ -57,7 +57,6 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
   const [activityId, setActivityId] = useState(
     multipleActivities ? "" : (w?.linkedActivityId ?? ""),
   );
-  const feedback = data?.feedback.find((f) => f.workoutId === w?.id);
   const form = useForm<z.input<typeof workoutInput>, unknown, WorkoutInput>({
     resolver: zodResolver(workoutInput),
     defaultValues: {
@@ -88,15 +87,6 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
   const watchedActivityCount = useWatch({
     control: form.control,
     name: "activityCount",
-  });
-  const [journal, setJournal] = useState({
-    rpe: feedback?.rpe ?? null,
-    energy: feedback?.energy ?? null,
-    fatigue: feedback?.fatigue ?? null,
-    soreness: feedback?.soreness ?? null,
-    sleepQuality: feedback?.sleepQuality ?? null,
-    notes: feedback?.notes ?? "",
-    skippedReason: feedback?.skippedReason ?? "",
   });
   async function perform(
     body: unknown,
@@ -506,6 +496,19 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
           ) : null}
           {tab === "link" && w ? (
             <div className="form-grid">
+              {w.recordedResult &&
+              Object.values(w.recordedResult).some((v) => v != null) ? (
+                <div className="full">
+                  <strong>Recorded in Training Plan</strong>
+                  <p className="helper">
+                    {w.recordedResult.distanceKm ?? "—"} km ·{" "}
+                    {w.recordedResult.durationMin?.toFixed(1) ?? "—"} min · HR{" "}
+                    {w.recordedResult.avgHr ?? "—"} /{" "}
+                    {w.recordedResult.maxHr ?? "—"}. These are source results,
+                    separate from the workout targets.
+                  </p>
+                </div>
+              ) : null}
               <p className="helper full">
                 Link a recorded activity from the same date and sport. Recorded
                 Garmin metrics stay read-only. A manual link confirms a recorded
@@ -555,6 +558,7 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
                   {data?.activities
                     .filter(
                       (a) =>
+                        a.source !== "sheet" &&
                         activityFitsWorkout(w, a) &&
                         !data.links.some(
                           (l) =>
@@ -609,78 +613,10 @@ function EditorForm({ onClose, workout: w, date, duplicate }: EditorProps) {
             </div>
           ) : null}
           {tab === "journal" && w ? (
-            <div className="form-grid">
-              {(
-                [
-                  ["rpe", "Session RPE", 10],
-                  ["energy", "Energy", 5],
-                  ["fatigue", "Fatigue", 5],
-                  ["soreness", "Soreness", 5],
-                  ["sleepQuality", "Sleep quality", 5],
-                ] as const
-              ).map(([key, label, max]) => (
-                <label key={key}>
-                  {label} · 1–{max}
-                  <select
-                    value={journal[key] ?? ""}
-                    onChange={(e) =>
-                      setJournal({
-                        ...journal,
-                        [key]: e.target.value ? Number(e.target.value) : null,
-                      })
-                    }
-                  >
-                    <option value="">Not recorded</option>
-                    {Array.from({ length: max }, (_, i) => (
-                      <option key={i} value={i + 1}>
-                        {i + 1}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ))}
-              <label className="full">
-                How did it feel?
-                <textarea
-                  rows={3}
-                  value={journal.notes}
-                  onChange={(e) =>
-                    setJournal({ ...journal, notes: e.target.value })
-                  }
-                />
-              </label>
-              <label className="full">
-                Reason for skipped training
-                <input
-                  value={journal.skippedReason}
-                  onChange={(e) =>
-                    setJournal({ ...journal, skippedReason: e.target.value })
-                  }
-                />
-              </label>
-              <Button
-                className="full"
-                onClick={() =>
-                  void perform(
-                    {
-                      action: "feedback",
-                      id: feedback?.id ?? `journal-${w.id}`,
-                      revision: feedback?.revision ?? null,
-                      feedback: {
-                        ...journal,
-                        workoutId: w.id,
-                        activityId: w.linkedActivityId,
-                        date: w.date,
-                      },
-                    },
-                    "Training journal saved",
-                  )
-                }
-              >
-                <NotebookPen size={16} />
-                Save journal
-              </Button>
-            </div>
+            <WorkoutJournal
+              workout={w}
+              onSave={(body) => void perform(body, "Training journal saved")}
+            />
           ) : null}
           {existing &&
           tab === "workout" &&

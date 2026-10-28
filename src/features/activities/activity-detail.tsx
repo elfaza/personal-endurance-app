@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { SportIcon } from "@/components/training/workout-card";
 import { WorkoutEditor } from "@/components/training/workout-editor";
 import { dateLabel, duration, pace } from "@/lib/dates";
+import { feedbackForActivity } from "@/lib/measurements";
 export function ActivityDetail({ id }: { id: string }) {
   const { data, offline, save, notify } = useTraining();
   const editingDisabled = useEditingDisabled();
@@ -39,7 +40,9 @@ export function ActivityDetail({ id }: { id: string }) {
     error,
     isLoading,
   } = useSWR<Activity>(
-    cached && !offline ? `/api/activities/${id}` : null,
+    cached && cached.source !== "sheet" && !offline
+      ? `/api/activities/${id}`
+      : null,
     (url) => request<Activity>(url),
     { revalidateOnFocus: false, errorRetryCount: 1 },
   );
@@ -53,12 +56,16 @@ export function ActivityDetail({ id }: { id: string }) {
       </div>
     );
   const link = data.links.find((l) => activityIdsForLink(l).includes(id));
-  const workout = data.workouts.find((w) => w.id === link?.workoutId);
+  const workout = data.workouts.find(
+    (w) => w.id === (a.sourceWorkoutId ?? link?.workoutId),
+  );
   const comparableTargets =
     !workout?.allowMixedSports || sport(workout.type) === a.type;
-  const feedback = data.feedback.find(
-    (f) => f.activityId === id || f.workoutId === workout?.id,
-  );
+  const feedback = a.sourceWorkoutId
+    ? data.feedback.find(
+        (f) => f.workoutId === a.sourceWorkoutId && f.scope !== "activity",
+      )
+    : feedbackForActivity(data, id);
   async function linkActivity() {
     const w = data!.workouts.find((w) => w.id === linkId);
     if (!w) return;
@@ -86,8 +93,12 @@ export function ActivityDetail({ id }: { id: string }) {
       <div className="page-heading">
         <div>
           <div className="eyebrow">
-            {a.source === "demo" ? "DEMO ACTIVITY" : "GARMIN CONNECT"} ·{" "}
-            {a.rawType.replaceAll("_", " ")}
+            {a.source === "sheet"
+              ? "GOOGLE SHEETS · MANUAL RESULT"
+              : a.source === "demo"
+                ? "DEMO ACTIVITY"
+                : "GARMIN CONNECT"}{" "}
+            · {a.rawType.replaceAll("_", " ")}
           </div>
           <h1>
             {a.title}
@@ -101,15 +112,17 @@ export function ActivityDetail({ id }: { id: string }) {
               year: "numeric",
             })}{" "}
             ·{" "}
-            {new Intl.DateTimeFormat("en-GB", {
-              timeZone: "Asia/Jakarta",
-              hour: "2-digit",
-              minute: "2-digit",
-            }).format(new Date(a.startedAt))}{" "}
-            WIB
+            {a.timeKnown === false
+              ? "Time not recorded"
+              : new Intl.DateTimeFormat("en-GB", {
+                  timeZone: "Asia/Jakarta",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }).format(new Date(a.startedAt))}{" "}
+            {a.timeKnown === false ? "" : "WIB"}
           </p>
         </div>
-        {data.mode === "live" ? (
+        {data.mode === "live" && a.source === "garmin" ? (
           <Button asChild variant="outline">
             <a href={`/api/activities/${id}/download`}>
               <Download size={16} />
@@ -197,6 +210,14 @@ export function ActivityDetail({ id }: { id: string }) {
               <dd>{a.id}</dd>
             </div>
           </dl>
+          <p className="helper">
+            {feedback?.scope === "activity"
+              ? "RPE from this activity’s journal."
+              : "RPE from the shared training-session journal, when available."}
+            {a.source === "sheet"
+              ? " Measurements were entered in Training Plan; they are not Garmin recordings."
+              : ""}
+          </p>
           <h3 className="subheading">Available split summaries</h3>
           {a.splits.length ? (
             <div className="split-table">

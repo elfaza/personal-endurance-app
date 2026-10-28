@@ -1,14 +1,25 @@
 import "server-only";
 import { randomInt, randomUUID } from "node:crypto";
 import { z } from "zod";
-import { datasets, type Dataset } from "../domain";
+import { datasets, sport, activityIdsForLink, type Dataset } from "../domain";
+import {
+  TRACKER_MARKER,
+  LOG_TAB,
+  ROADMAP_TAB,
+  DASHBOARD_TAB,
+  trackerState,
+  readRoadmapGoals,
+  type TrackerState,
+} from "./tracker";
 import { HEADERS, mapRows, type Snapshot } from "./rows";
 import { AppError } from "../server/errors";
 import { oauthReady, tokenResponse } from "./oauth";
+import { trackerSetupRequests } from "./tracker-setup";
 import { fingerprint } from "./rows";
 import {
   PLAN_TAB,
   PLAN_MARKER,
+  cellValue,
   planState,
   readPlan,
   preparePlanSetup,
@@ -231,6 +242,7 @@ export class SheetsClient {
       snapshot.trainingPlan = state;
       snapshot.Workouts = readPlan(state);
       snapshot.Feedback = snapshot.Feedback.map((record) => {
+        if (record.payload.scope === "activity") return record;
         const position = state.positions.get(String(record.payload.workoutId));
         if (position == null) return record;
         const value = grid.rows[position][state.columns.get("RPE")!];
@@ -249,17 +261,124 @@ export class SheetsClient {
           fingerprint: fingerprint([record.fingerprint, JSON.stringify(value)]),
         };
       });
+      for (const w of snapshot.Workouts.filter((w) => !w.deleted)) {
+        const row = state.positions.get(w.id)!;
+        const value = cellValue(grid.rows[row]?.[state.columns.get("RPE")!]);
+        if (
+          value === "" ||
+          snapshot.Feedback.some(
+            (f) =>
+              !f.deleted &&
+              f.payload.workoutId === w.id &&
+              f.payload.scope !== "activity",
+          )
+        )
+          continue;
+        const rpe = Number(value);
+        if (!Number.isInteger(rpe) || rpe < 1 || rpe > 10)
+          throw new AppError("A Training Plan RPE must be blank or 1–10.", 409);
+        const link = snapshot.ActivityLinks.find(
+          (l) => !l.deleted && l.payload.workoutId === w.id,
+        );
+        const ids = link
+          ? activityIdsForLink(
+              link.payload as unknown as {
+                activityId: string;
+                activityIds?: string[];
+              },
+            )
+          : [];
+        const primary = w.payload.allowMixedSports
+          ? ids.find((id) =>
+              snapshot.Activities.some(
+                (a) =>
+                  a.id === id &&
+                  a.payload.type === sport(String(w.payload.type)),
+              ),
+            )
+          : undefined;
+        if (
+          primary &&
+          snapshot.Feedback.some(
+            (f) =>
+              !f.deleted &&
+              f.payload.scope === "activity" &&
+              f.payload.activityId === primary,
+          )
+        )
+          continue;
+        const id = `journal-${w.id}`;
+        if (snapshot.Feedback.some((f) => f.id === id)) continue;
+        const hash = fingerprint([w.fingerprint, String(value)]);
+        snapshot.Feedback.push({
+          id,
+          revision: hash,
+          parent: "",
+          updatedAt: "",
+          deleted: false,
+          synthetic: true,
+          operationId: "training-plan-feedback",
+          fingerprint: hash,
+          payload: {
+            workoutId: w.id,
+            ...(primary
+              ? { activityId: primary, scope: "activity" }
+              : { scope: "session" }),
+            date: w.payload.date,
+            rpe,
+            energy: null,
+            fatigue: null,
+            soreness: null,
+            sleepQuality: null,
+            notes: String(w.payload.notes ?? ""),
+            skippedReason: "",
+          },
+        });
+      }
+    }
+    const tracker = snapshot.Meta.find(
+      (r) =>
+        r.id === TRACKER_MARKER && !r.deleted && r.payload.enabled === true,
+    );
+    if (tracker) {
+      const state = await this.readTracker(info, snapshot.Goals);
+      if (
+        state.log.sheetId !== tracker.payload.logId ||
+        state.roadmap.sheetId !== tracker.payload.roadmapId ||
+        state.dashboard.sheetId !== tracker.payload.dashboardId
+      )
+        throw new AppError(
+          "A connected tracker tab changed identity. Review its setup before saving.",
+          409,
+        );
+      snapshot.tracker = state;
+      snapshot.Goals = readRoadmapGoals(state);
     }
     return { snapshot, initialized: present.length === datasets.length };
   }
   async readPlanGrid(info?: SheetInventory): Promise<PlanGrid> {
+    return this.readGrid(PLAN_TAB, info);
+  }
+  async readTracker(
+    info?: SheetInventory,
+    goals: Snapshot["Goals"] = [],
+  ): Promise<TrackerState> {
+    const inventory = info ?? (await this.inspect());
+    const [log, roadmap, dashboard] = await Promise.all(
+      [LOG_TAB, ROADMAP_TAB, DASHBOARD_TAB].map((title) =>
+        this.readGrid(title, inventory),
+      ),
+    );
+    return trackerState(log, roadmap, dashboard, goals);
+  }
+  async readGrid(title: string, info?: SheetInventory): Promise<PlanGrid> {
     const inventory = info ?? (await this.inspect());
     const sheet = inventory.sheets.find(
-      (s) => s.properties.title === PLAN_TAB,
+      (s) => s.properties.title === title,
     )?.properties;
     if (!sheet?.gridProperties)
       throw new AppError(
-        "Training Plan is missing or its layout could not be read.",
+        `The ${title} worksheet is missing or its layout could not be read.`,
         409,
       );
     const { rowCount, columnCount } = sheet.gridProperties;
@@ -272,9 +391,9 @@ export class SheetsClient {
       columnCount <= 26
         ? String.fromCharCode(64 + columnCount)
         : `A${String.fromCharCode(64 + columnCount - 26)}`;
-    const range = `'${PLAN_TAB}'!A1:${lastColumn}${rowCount}`;
+    const range = `'${title.replaceAll("'", "''")}'!A1:${lastColumn}${rowCount}`;
     const raw = await this.request(
-      `?ranges=${encodeURIComponent(range)}&includeGridData=true&fields=sheets(properties(sheetId,title),data(rowData(values(userEnteredValue,effectiveValue,formattedValue,dataValidation))))`,
+      `?ranges=${encodeURIComponent(range)}&includeGridData=true&fields=sheets(properties(sheetId,title),data(rowData(values(userEnteredValue,effectiveValue,formattedValue,dataValidation,note))))`,
     );
     const parsed = z
       .object({
@@ -302,12 +421,11 @@ export class SheetsClient {
       .parse(raw);
     const found = parsed.sheets.find(
       (s) =>
-        s.properties.sheetId === sheet.sheetId &&
-        s.properties.title === PLAN_TAB,
+        s.properties.sheetId === sheet.sheetId && s.properties.title === title,
     );
     if (!found)
       throw new AppError(
-        "Training Plan read returned the wrong worksheet.",
+        `The ${title} read returned the wrong worksheet.`,
         409,
       );
     return {
@@ -349,6 +467,55 @@ export class SheetsClient {
         [{ dataset: "Meta", values: marker }],
         commit,
         setup.requests,
+      );
+    });
+  }
+  async enableTracker() {
+    return this.withWriteLock(async (commit) => {
+      const { snapshot, initialized } = await this.read();
+      if (!initialized || !snapshot.trainingPlan)
+        throw new AppError(
+          "Connect Training Plan before connecting the other tracker tabs.",
+          409,
+        );
+      if (snapshot.tracker) return;
+      const state = await this.readTracker(undefined, snapshot.Goals);
+      const working = { ...snapshot, Goals: readRoadmapGoals(state) };
+      const requests = trackerSetupRequests(working, state);
+      const latest = await this.readTracker(undefined, state.goalShadow);
+      const plan = await this.readPlanGrid();
+      if (
+        latest.hash !== state.hash ||
+        fingerprint([JSON.stringify(plan)]) !== snapshot.trainingPlan.hash
+      )
+        throw new AppError(
+          "The tracker changed during setup. Refresh before connecting.",
+          409,
+        );
+      const operation = randomUUID(),
+        now = new Date().toISOString();
+      const previousMarker = snapshot.Meta.find((r) => r.id === TRACKER_MARKER);
+      const values = [
+        TRACKER_MARKER,
+        operation,
+        previousMarker?.revision ?? "",
+        now,
+        "false",
+        JSON.stringify({
+          enabled: true,
+          logId: state.log.sheetId,
+          roadmapId: state.roadmap.sheetId,
+          dashboardId: state.dashboard.sheetId,
+          previousDashboard: state.dashboard.rows,
+        }),
+        operation,
+      ];
+      await this.append(
+        [{ dataset: "Meta", values }],
+        commit,
+        requests,
+        snapshot.trainingPlan,
+        state,
       );
     });
   }
@@ -396,6 +563,7 @@ export class SheetsClient {
     commit: SheetCommit,
     extraRequests: unknown[] = [],
     plan?: TrainingPlanState,
+    tracker?: TrackerState,
   ) {
     if (!rows.length) return;
     const info = await this.inspect();
@@ -428,6 +596,14 @@ export class SheetsClient {
       if (fingerprint([JSON.stringify(latest)]) !== plan.hash)
         throw new AppError(
           "Training Plan changed just before saving. Refresh and review the newer version.",
+          409,
+        );
+    }
+    if (tracker && extraRequests.length) {
+      const latest = await this.readTracker(info, tracker.goalShadow);
+      if (latest.hash !== tracker.hash)
+        throw new AppError(
+          "Workout Log, roadmap or Dashboard changed just before saving. Refresh before trying again.",
           409,
         );
     }
