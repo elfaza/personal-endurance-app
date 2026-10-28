@@ -13,6 +13,7 @@ import {
   Settings2,
   ShieldCheck,
   WifiOff,
+  Utensils,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTraining } from "./providers";
@@ -44,6 +45,7 @@ const nav = [
     mobile: "Analytics",
     icon: BarChart3,
   },
+  { href: "/food", label: "Food journal", mobile: "Food", icon: Utensils },
   { href: "/settings", label: "Settings", mobile: "Settings", icon: Settings2 },
 ];
 export function Shell({ children }: { children: ReactNode }) {
@@ -200,17 +202,19 @@ export function Shell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <nav className="mobile-nav" aria-label="Mobile navigation">
-        {nav.map((n) => (
-          <Link
-            href={n.href}
-            key={n.href}
-            className={pathname.startsWith(n.href) ? "active" : ""}
-            aria-current={pathname.startsWith(n.href) ? "page" : undefined}
-          >
-            <n.icon size={20} />
-            <span>{n.mobile}</span>
-          </Link>
-        ))}
+        {nav
+          .filter((n) => n.href !== "/analytics")
+          .map((n) => (
+            <Link
+              href={n.href}
+              key={n.href}
+              className={pathname.startsWith(n.href) ? "active" : ""}
+              aria-current={pathname.startsWith(n.href) ? "page" : undefined}
+            >
+              <n.icon size={20} />
+              <span>{n.mobile}</span>
+            </Link>
+          ))}
       </nav>
     </div>
   );

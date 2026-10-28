@@ -1,0 +1,686 @@
+/* Extends existing light/charcoal tokens. No separate wellness theme. */
+.inline-icon {
+  display: inline;
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+.wellness-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.wellness-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.wellness-row > *,
+.outlook-columns > *,
+.food-layout > * {
+  min-width: 0;
+}
+.wellness-row strong {
+  font-size: 14px;
+}
+.wellness-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 12px;
+}
+.dialog-content > .wellness-form {
+  padding: 20px 24px 24px;
+}
+.wellness-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.wellness-form input,
+.wellness-form select,
+.wellness-form textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 16px;
+}
+.wellness-form textarea {
+  resize: vertical;
+}
+.wellness-form label small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.wellness-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.wellness-fields.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.wellness-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.wellness-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.wellness-fieldset:disabled {
+  opacity: 0.75;
+}
+.wellness-form .wellness-checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 400;
+}
+.wellness-checkbox input {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+.wellness-tag {
+  display: inline-flex;
+  border-radius: 6px;
+  padding: 5px 9px;
+  background: var(--accent-subtle);
+  color: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+.wellness-tag.tag-warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+.wellness-budget {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  margin-top: 18px;
+}
+.wellness-budget progress {
+  width: 100%;
+  height: 8px;
+  border: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 12px 0 5px;
+  background: var(--line);
+  accent-color: var(--accent);
+}
+.wellness-budget progress::-webkit-progress-bar {
+  background: var(--line);
+}
+.wellness-budget progress::-webkit-progress-value {
+  background: var(--accent);
+}
+.wellness-budget .helper {
+  font-size: 12px;
+  margin-top: 8px;
+}
+.budget-warning progress {
+  accent-color: var(--warning);
+}
+.budget-warning progress::-webkit-progress-value {
+  background: var(--warning);
+}
+.wellness-notice {
+  background: var(--warning-bg);
+  color: var(--warning);
+  padding: 13px 16px;
+  border-radius: 9px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.wellness-profile-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 22px 0;
+  gap: 22px;
+}
+.wellness-profile-facts dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+.wellness-profile-facts dd {
+  margin: 4px 0 0;
+  font-weight: 600;
+  font-size: 17px;
+}
+.wellness-goal {
+  border-left: 3px solid var(--accent);
+  padding-left: 14px;
+  overflow-wrap: anywhere;
+}
+.wellness-history {
+  max-height: 280px;
+  overflow-y: auto;
+  margin-top: 18px;
+}
+.wellness-history > div {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.wellness-history > div > span {
+  flex: 1;
+  font-size: 14px;
+}
+.wellness-empty-small {
+  padding: 24px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.outlook-panel {
+  margin-block: 24px;
+}
+.wellness-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.wellness-section-heading h2 {
+  margin: 8px 0;
+}
+.outlook-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-block: 22px;
+}
+.outlook-metrics > div {
+  padding: 20px;
+  min-width: 0;
+  border-right: 1px solid var(--line);
+}
+.outlook-metrics > div:last-child {
+  border: 0;
+}
+.outlook-metrics span,
+.outlook-metrics p {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.outlook-metrics strong {
+  display: block;
+  font-size: 28px;
+  margin: 8px 0;
+  font-weight: 600;
+}
+.outlook-metrics small {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.outlook-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+.outlook-columns h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.outlook-columns .text-link {
+  display: flex;
+  width: fit-content;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+.outlook-sport {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.outlook-sport p {
+  margin: 5px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.outlook-weeks {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-block: 20px;
+}
+.outlook-weeks > div {
+  display: grid;
+  grid-template-columns: 60px 1fr 24px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.outlook-week-bar {
+  height: 7px;
+  background: var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.outlook-week-bar span {
+  height: 100%;
+  display: block;
+  background: var(--running);
+  border-radius: 4px;
+}
+.outlook-evidence {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  padding-block: 16px 4px;
+}
+.outlook-panel summary {
+  cursor: pointer;
+  font-size: 14px;
+  min-height: 30px;
+  font-weight: 600;
+}
+.outlook-panel details li {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.outlook-review {
+  background: var(--accent-subtle);
+  border-radius: 12px;
+  margin-top: 20px;
+  padding: 22px;
+  overflow-wrap: anywhere;
+}
+.outlook-summary {
+  font-size: 16px;
+  line-height: 1.75;
+  white-space: pre-line;
+}
+.outlook-insight {
+  border-top: 1px solid var(--line);
+  padding-block: 16px 2px;
+  font-size: 14px;
+}
+.outlook-empty {
+  display: flex;
+  gap: 16px;
+  padding: 22px;
+  margin-top: 20px;
+  border: 1px dashed var(--control-border);
+  border-radius: 10px;
+}
+.outlook-empty > svg {
+  flex-shrink: 0;
+  color: var(--accent-soft);
+}
+.food-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(270px, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+.food-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.food-aside .wellness-budget {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+.food-aside .text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.food-date-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.food-date-label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--muted);
+  gap: 3px;
+}
+.food-date-label input {
+  font-size: 16px;
+  padding: 8px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  width: 165px;
+  min-height: 44px;
+}
+.food-energy {
+  display: flex;
+  flex-direction: column;
+  margin: 28px 0 22px;
+}
+.food-energy > span {
+  color: var(--muted);
+  font-size: 14px;
+}
+.food-energy > strong {
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1.4;
+  letter-spacing: -1px;
+}
+.food-energy small {
+  font-size: 16px;
+  color: var(--muted);
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.food-macros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.food-macros > div {
+  border-top: 3px solid var(--accent);
+  padding-top: 12px;
+}
+.food-macros > div:nth-child(2) {
+  border-color: var(--running);
+}
+.food-macros > div:nth-child(3) {
+  border-color: var(--purple);
+}
+.food-macros span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.food-macros strong {
+  display: block;
+  font-size: 20px;
+  margin-top: 5px;
+}
+.food-meal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+.food-meal {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 20px;
+}
+.food-photo-link,
+.food-no-photo {
+  width: 100px;
+  height: 100px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--accent-subtle);
+}
+.food-photo-link img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.food-no-photo {
+  display: grid;
+  place-items: center;
+  color: var(--accent-soft);
+}
+.food-meal-content {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.food-meal-content h2 {
+  margin: 5px 0 8px;
+  font-size: 19px;
+}
+.food-meal-content .wellness-actions {
+  justify-content: flex-start;
+}
+.food-notes {
+  white-space: pre-line;
+  font-size: 13px;
+  color: var(--muted);
+}
+.food-empty {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  gap: 16px;
+  padding-block: 42px;
+}
+.food-empty > svg {
+  color: var(--accent-soft);
+}
+.food-empty p {
+  color: var(--muted);
+  max-width: 40ch;
+}
+.food-steps {
+  padding-left: 20px;
+  font-size: 14px;
+  margin-block: 18px;
+}
+.food-steps li {
+  margin-bottom: 12px;
+  padding-left: 5px;
+}
+.food-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-block: 22px;
+}
+.food-week button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  border-radius: 8px;
+  padding: 9px 2px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  min-height: 85px;
+}
+.food-week button.selected {
+  background: var(--accent-subtle);
+  border-color: var(--accent-soft);
+}
+.food-week span,
+.food-week small {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.food-week strong {
+  font-size: 16px;
+}
+.meal-photo-area {
+  border: 1px dashed var(--control-border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.meal-photo-preview {
+  object-fit: contain;
+  max-height: 230px;
+  width: 100%;
+  border-radius: 8px;
+  background: var(--bg);
+}
+.meal-photo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.meal-photo-picker {
+  margin-top: 12px;
+}
+.meal-photo-picker input {
+  border: 0;
+  padding: 10px 0;
+  font-size: 14px;
+}
+.meal-photo-picker input::file-selector-button {
+  border: 1px solid var(--control-border);
+  background: var(--panel);
+  color: var(--text);
+  padding: 10px;
+  border-radius: 8px;
+  margin-right: 12px;
+  cursor: pointer;
+}
+.meal-ai-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--accent-subtle);
+  padding: 16px;
+  border-radius: 10px;
+}
+.food-component {
+  padding: 14px 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.food-component legend {
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.meal-draft-total {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--accent-subtle);
+  padding: 18px;
+  border-radius: 10px;
+}
+.meal-draft-total strong {
+  font-size: 24px;
+}
+.meal-draft-total small {
+  font-size: 13px;
+  color: var(--muted);
+}
+@media (max-width: 1100px) {
+  .food-layout {
+    grid-template-columns: 1fr;
+  }
+  .food-aside {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .outlook-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .outlook-metrics > div:nth-child(2) {
+    border-right: 0;
+  }
+  .outlook-metrics > div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+}
+@media (max-width: 650px) {
+  .dialog-content > .wellness-form {
+    padding-inline: 16px;
+  }
+  .food-aside,
+  .outlook-columns {
+    display: flex;
+    flex-direction: column;
+  }
+  .outlook-metrics > div {
+    padding: 15px;
+  }
+  .outlook-metrics strong {
+    font-size: 24px;
+  }
+  .outlook-review {
+    padding: 16px;
+  }
+  .wellness-fields.three {
+    grid-template-columns: 1fr;
+  }
+  .wellness-form .wellness-fields {
+    gap: 12px;
+  }
+  .food-meal {
+    gap: 14px;
+    padding: 16px;
+  }
+  .food-photo-link,
+  .food-no-photo {
+    width: 65px;
+    height: 65px;
+  }
+  .food-date-controls {
+    gap: 0;
+  }
+  .food-date-label input {
+    width: 150px;
+  }
+  .food-day > .wellness-row {
+    gap: 16px;
+  }
+  .food-macros {
+    gap: 10px;
+  }
+  .food-component {
+    padding-inline: 12px;
+  }
+  .wellness-section-heading > .btn {
+    width: 100%;
+  }
+  .food-week small,
+  .food-week span {
+    font-size: 12px;
+  }
+  .food-week {
+    gap: 2px;
+  }
+}

@@ -1,6 +1,25 @@
 # Personal Endurance
 
-A single-user, mobile-first training PWA for running and cycling. Built with Next.js App Router, strict TypeScript, Tailwind, shadcn-style Radix components, Lucide, Recharts, SWR, Zod and React Hook Form. No OpenAI API, paid AI service, database server, or Garmin login scraper.
+A single-user, mobile-first training PWA for running and cycling. Built with Next.js App Router, strict TypeScript, Tailwind, shadcn-style Radix components, Lucide, Recharts, SWR, Zod and React Hook Form. Optional OpenAI analysis; no database server or Garmin login scraper. Manual training, profile and food logging work without AI.
+
+## Profile, training outlook and food journal
+
+- Settings includes optional birth date (age calculated), height, experience and personal focus. Dated weight measurements have editable history and conflict detection. Workload still uses recorded duration × journal RPE, not body measurements.
+- Overview includes a seven-day comparison, required-session completion, load measurement coverage, separate running/cycling month scenarios, journal averages and goal distance evidence. These calculations require no AI. A scenario adds future distance targets to actual recorded distance; it is not a race-time or readiness prediction.
+- Generate an AI review only on demand after explicit consent. OpenAI receives the calculated summary, age/height if provided, recent weight history and logged food totals; no birth date or meal photos in training reviews. Saved reviews are reused until their inputs change and marked outdated when needed.
+- Food journal supports manual entry, six plain-food reference estimates and optional photo analysis. Photo results fill an editable draft; no meal is created until Save confirmed meal. Calories show an estimated range, with editable grams and macros. Logged totals never imply full-day intake or subtract Garmin calories.
+- Confirmed photos are JPEG previews up to 640 pixels / 48 KB, stored as private encoded chunks in the existing PE_Meta worksheet. No extra storage service. Photos and meals commit together through the existing shared lock; authenticated photo routes expose only photos attached to active meals. Deletion hides an entry/photo but append-only Sheet history retains it. At 90 maximum-size previews this adds about 6 MB encoded data per month plus revisions; full dataset reads get heavier over time. This is a personal-scale compromise, not original photo backup.
+- All new records use namespaced PE_Meta IDs and the existing repository, with no new required worksheets or production migration. New personal/food data and photos are excluded from offline training snapshots.
+
+### Optional AI setup and limits
+
+Set server-only `OPENAI_API_KEY` in `.env.local` or deployment settings and restart/redeploy. Never enter it into chat or client storage. AI calls are disabled in demo, read-only, uninitialized or missing-key states. Live mode requires the existing authentication and writable Google Sheets setup.
+
+The fixed model is `gpt-6-luna`, using the Responses API with structured output, `store:false`, no tools, no automatic retries, no fallback model, and no background paid generation. Rates checked 28 October 2026: $0.10/M input tokens and $0.50/M output tokens. Monitor official prices when updating this integration. The server reserves a conservative per-request maximum before sending, persisted under the shared Sheets write lock; verified usage settles the reservation. Unknown/timeout outcomes retain the full reservation indefinitely. Idempotency keys cannot incur a second call. Monthly reset follows Asia/Jakarta; late settlements update their original month.
+
+The app allowance is Rp20,000/month with a warning at 80%. Estimates use Rp20,000/USD plus a 25% buffer; this limits app requests at configured rates, not the actual card bill, provider taxes, changed prices, or use of the same key elsewhere. Unverified or above-bound/model-mismatch usage stays conservatively counted; model/rate mismatches pause AI pending review. No auto top-up. OpenAI billing must be activated separately; prepaid minimums are unrelated to this allowance. `store:false` is not a guarantee of zero provider retention. No live API call is needed for the automated test suite.
+
+UX research, flows and acceptance criteria: [docs/ai-wellness-ux.md](docs/ai-wellness-ux.md). The six bundled plain-food figures are rounded USDA FoodData Central SR Legacy reference estimates (white cooked rice, roasted skinless chicken breast, hard-boiled egg, raw banana, vegetable oil and granulated sugar); cooking/brands vary. Their ±20% display band is an explicit heuristic, not a validated confidence interval. Foods outside this small set use clearly marked AI estimates or manual values; there is no paid nutrition database.
 
 ## Start locally
 
@@ -18,7 +37,7 @@ Development demo access without a password is restricted to localhost. Configure
 
 ## What is implemented
 
-- Five sections: dashboard, weekly/monthly calendar, activities, analytics, settings; desktop sidebar and mobile bottom navigation.
+- Six sections: dashboard, weekly/monthly calendar, activities, analytics, food journal and settings. Desktop sidebar includes all sections; mobile navigation keeps five destinations, with Analytics linked from the dashboard.
 - Metric summaries, date filters, running/cycling distance, planned versus actual distance, pace and HR trends, volume and consistency charts.
 - Workout creation, edit, soft deletion of plans, duplication, skip, explicit manual completion, partial completion, rescheduling with retained original history, multiple sessions per day, optional sessions and configurable targets.
 - Usual-week action: Monday easy run, Tuesday commute, Wednesday intervals, tentative Thursday commute, Friday long run and weekend rest. It leaves occupied days intact and adds no automatic training targets or progression.
@@ -61,7 +80,7 @@ After changing environment variables, redeploy (or restart locally). Secrets and
 
 1. Create or select a Google Cloud project and enable **Google Sheets API**.
 2. Configure Google Auth Platform branding and audience. For an External app in Testing, add the Google account that can edit the sheet under **Audience → Test users**.
-3. Create a **Web application** OAuth client. Register this exact production redirect URI: `https://personal-endurance-app-elfazas-projects.vercel.app/api/google/callback`. For another deployment, use APP_ORIGIN followed by `/api/google/callback`.
+3. Create a **Web application** OAuth client. Register this exact production redirect URI: `https://personal-endurance-app.vercel.app/api/google/callback`. The short hostname is the canonical production origin. When migrating an existing OAuth client, add this URI alongside the previous one before reconnecting Google; the existing refresh token does not require a reconnect just to change the app hostname. For another deployment, use APP_ORIGIN followed by `/api/google/callback`.
 4. Save GOOGLE_AUTH_MODE=oauth, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_SHEETS_SPREADSHEET_ID, GOOGLE_SHEETS_WRITES_ENABLED=true, APP_ORIGIN, APP_PASSWORD, and SESSION_SECRET in Vercel for Production. Keep secrets in Secret / Sensitive fields, out of chat. Redeploy.
 5. Sign in and open `/settings/google`. Select **Connect Google**, approve editing access, then copy the refresh token from the private masked page directly into GOOGLE_REFRESH_TOKEN in Vercel. Redeploy again. Live mode activates automatically. The completion page uses no-store, no-referrer and a nonce CSP; it clears on exit or after five minutes.
 6. Verify reading and writing from Google setup. This writes and reads a marker only in a new disposable hidden worksheet, then deletes only that exact worksheet. Existing content is never targeted. A failed verification may retain the test worksheet or lock for review; do not retry an uncertain write automatically.

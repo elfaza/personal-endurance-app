@@ -19,6 +19,7 @@ import { useTraining, useEditingDisabled } from "@/components/providers";
 import { Button } from "@/components/ui/button";
 import { DateFilter, initialRange } from "@/components/date-filter";
 import { GoalCard } from "@/components/goal-card";
+import { TrainingOutlook } from "@/components/wellness/training-outlook";
 import { WorkoutEditor } from "@/components/training/workout-editor";
 import { SportIcon, WorkoutCard } from "@/components/training/workout-card";
 import {
@@ -271,6 +272,7 @@ export function Dashboard() {
           </Link>
         </section>
       </div>
+      <TrainingOutlook />
       <div className="section-heading">
         <h2>Your training, at a glance</h2>
         <DateFilter value={range} onChange={setRange} />

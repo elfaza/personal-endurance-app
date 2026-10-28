@@ -23,6 +23,7 @@ import { request, SNAPSHOT_KEY, useTraining } from "@/components/providers";
 import { SheetsImport } from "@/components/sheets-import";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle, useTheme } from "@/components/theme-toggle";
+import { ProfileSettings } from "@/components/wellness/profile-settings";
 type Inventory = {
   title: string;
   tabs: { title: string; header: unknown[] }[];
@@ -156,6 +157,7 @@ export function Settings() {
         </div>
       ) : null}
       <div className="settings-grid">
+        <ProfileSettings />
         <section
           className="panel padded sheets-connection"
           aria-label="Google Sheets connection"
@@ -498,6 +500,7 @@ export function Settings() {
               "APP_PASSWORD",
               "SESSION_SECRET",
               "APP_ORIGIN",
+              "OPENAI_API_KEY",
             ].map((s) => (
               <code key={s}>{s}</code>
             ))}
@@ -512,7 +515,8 @@ export function Settings() {
             <Database size={17} />
             <span>
               Google Sheets stores live training. Local demo changes use an
-              isolated file. No AI API or paid AI service is used.
+              isolated file. Optional OpenAI analysis uses a server-only key and
+              a monthly app allowance. Manual features work without AI.
             </span>
           </div>
           <Button variant="outline" onClick={() => void logout()}>

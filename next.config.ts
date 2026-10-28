@@ -3,6 +3,7 @@ const config: NextConfig = {
   distDir: process.env.PE_BUILD_DIR || ".next",
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   poweredByHeader: false,
+  devIndicators: process.env.PE_BUILD_DIR === ".next-e2e" ? false : undefined,
   async redirects() {
     const value = process.env.APP_ORIGIN;
     if (!value) return [];
