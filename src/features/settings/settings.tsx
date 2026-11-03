@@ -495,7 +495,7 @@ export function Settings() {
               "GOOGLE_SHEETS_SPREADSHEET_ID",
               "GOOGLE_CLIENT_ID",
               "GOOGLE_CLIENT_SECRET",
-              "GOOGLE_REFRESH_TOKEN",
+              "BLOB_READ_WRITE_TOKEN (private connection storage)",
               "GOOGLE_SHEETS_WRITES_ENABLED=true",
               "APP_PASSWORD",
               "SESSION_SECRET",

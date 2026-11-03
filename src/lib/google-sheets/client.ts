@@ -1,5 +1,6 @@
 import "server-only";
-import { randomInt, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
+import { readRefreshToken } from "./token-store";
 import { z } from "zod";
 import { datasets, sport, activityIdsForLink, type Dataset } from "../domain";
 import {
@@ -46,26 +47,35 @@ const sheetSchema = z.object({
 });
 export type SheetInventory = z.infer<typeof sheetSchema>;
 export class SheetsClient {
-  private token?: { value: string; expiry: number };
-  private pending?: Promise<string>;
+  private token?: { value: string; expiry: number; credential: string };
+  private pending?: { credential: string; promise: Promise<string> };
   constructor(private http: typeof fetch = fetch) {}
   private async auth(): Promise<string> {
-    if (this.token && this.token.expiry > Date.now() + 60000)
-      return this.token.value;
-    if (this.pending) return this.pending;
-    this.pending = this.obtain();
-    try {
-      return await this.pending;
-    } finally {
-      this.pending = undefined;
-    }
-  }
-  private async obtain() {
-    if (!oauthReady())
+    const refreshToken = await readRefreshToken();
+    if (!oauthReady() || !refreshToken)
       throw new AppError(
-        "Complete Google OAuth setup and save GOOGLE_REFRESH_TOKEN in Vercel first.",
+        "Connect Google from Settings to access your training sheet.",
         503,
       );
+    const credential = createHash("sha256").update(refreshToken).digest("hex");
+    if (
+      this.token?.credential === credential &&
+      this.token.expiry > Date.now() + 60000
+    )
+      return this.token.value;
+    if (this.pending?.credential === credential) return this.pending.promise;
+    const pending = {
+      credential,
+      promise: this.obtain(refreshToken, credential),
+    };
+    this.pending = pending;
+    try {
+      return await pending.promise;
+    } finally {
+      if (this.pending === pending) this.pending = undefined;
+    }
+  }
+  private async obtain(refreshToken: string, credential: string) {
     const response = await this.http("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -73,18 +83,19 @@ export class SheetsClient {
         grant_type: "refresh_token",
         client_id: process.env.GOOGLE_CLIENT_ID!,
         client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-        refresh_token: process.env.GOOGLE_REFRESH_TOKEN!,
+        refresh_token: refreshToken,
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(20000),
     });
     if (!response.ok)
       throw new AppError(
-        "Google authorization failed. Reconnect Google from Settings, save the new refresh token, and redeploy.",
+        "Google authorization failed. Reconnect Google from Settings to restore access. No token copying or redeployment is needed.",
         502,
       );
     const body = tokenResponse.parse(await response.json());
     this.token = {
+      credential,
       value: body.access_token,
       expiry: Date.now() + body.expires_in * 1000,
     };

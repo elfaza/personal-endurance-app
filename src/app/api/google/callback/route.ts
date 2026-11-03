@@ -4,10 +4,15 @@ import {
   exchangeCode,
   validateState,
 } from "@/lib/google-sheets/oauth";
-import { credentialPage } from "@/lib/google-sheets/credential-page";
+import { connectionPage } from "@/lib/google-sheets/connection-page";
+import {
+  claimAuthorization,
+  saveRefreshToken,
+} from "@/lib/google-sheets/token-store";
 import { AppError } from "@/lib/server/errors";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 export async function GET(req: NextRequest) {
   const headers = {
     "Cache-Control": "private, no-store, max-age=0",
@@ -29,9 +34,11 @@ export async function GET(req: NextRequest) {
         "Google authorization was cancelled. Return to Google setup to try again.",
         400,
       );
-    const page = credentialPage(
+    await claimAuthorization(req.nextUrl.searchParams.get("state")!);
+    await saveRefreshToken(
       await exchangeCode(req.nextUrl.searchParams.get("code") ?? "", verifier),
     );
+    const page = connectionPage();
     response = new NextResponse(page.html, {
       headers: {
         ...headers,

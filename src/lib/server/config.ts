@@ -1,11 +1,12 @@
 import "server-only";
+import { tokenStoreConfigured } from "../google-sheets/token-store";
 export function configuration() {
   const oauth = process.env.GOOGLE_AUTH_MODE === "oauth";
   // OAuth setup stays accessible while credentials are incomplete. Once a
   // refresh token is configured, never silently fall back to sample data.
   const mode =
     process.env.PE_DATA_MODE === "live" ||
-    (oauth && !!process.env.GOOGLE_REFRESH_TOKEN)
+    (oauth && !!(process.env.GOOGLE_REFRESH_TOKEN || tokenStoreConfigured()))
       ? "live"
       : "demo";
   return {
@@ -19,7 +20,7 @@ export function configuration() {
       oauth &&
       process.env.GOOGLE_CLIENT_ID &&
       process.env.GOOGLE_CLIENT_SECRET &&
-      process.env.GOOGLE_REFRESH_TOKEN
+      (process.env.GOOGLE_REFRESH_TOKEN || tokenStoreConfigured())
     ),
   } as const;
 }

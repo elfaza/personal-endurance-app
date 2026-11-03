@@ -4,8 +4,11 @@ import {
   appOrigin,
   googleCallbackUrl,
   oauthConfigured,
-  oauthReady,
 } from "@/lib/google-sheets/oauth";
+import {
+  readRefreshToken,
+  tokenStoreConfigured,
+} from "@/lib/google-sheets/token-store";
 import { GoogleVerification } from "@/components/google-verification";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck } from "lucide-react";
@@ -20,9 +23,20 @@ export default async function GoogleSetup() {
   } catch {
     /* Show configuration instructions without credential values. */
   }
-  const ready = oauthReady();
+  let ready = false;
+  let storageError = "";
+  try {
+    ready = !!(await readRefreshToken());
+  } catch {
+    storageError =
+      "Connection storage is temporarily unavailable. Try again later.";
+  }
   const canConnect =
-    process.env.GOOGLE_AUTH_MODE === "oauth" && oauthConfigured() && !!origin;
+    process.env.GOOGLE_AUTH_MODE === "oauth" &&
+    oauthConfigured() &&
+    !!origin &&
+    tokenStoreConfigured() &&
+    process.env.VERCEL_BLOB_RETRIES === "0";
   return (
     <div className="panel padded google-setup-page">
       <span className="eyebrow">GOOGLE SHEETS CONNECTION</span>
@@ -31,15 +45,20 @@ export default async function GoogleSetup() {
       </h1>
       <p className="helper">
         {ready
-          ? "Your Google credentials are configured. Verify access to your sheet to finish setup."
+          ? "A Google connection is saved on the server. If access has expired, reconnect below."
           : "Choose the Google account that can edit your training sheet. We’ll take you to Google to approve access."}
       </p>
-      {!ready ? (
+      {storageError ? (
+        <p className="form-error" role="alert">
+          {storageError}
+        </p>
+      ) : null}
+      {
         <>
           <ol className="google-setup-steps" aria-label="Connection steps">
             <li>Choose your account</li>
             <li>Approve access</li>
-            <li>Finish private setup</li>
+            <li>Continue training</li>
           </ol>
           <form action="/api/google" method="post">
             <button
@@ -47,18 +66,19 @@ export default async function GoogleSetup() {
               disabled={!canConnect}
               type="submit"
             >
-              Connect Google <ArrowRight size={18} />
+              {ready ? "Reconnect Google" : "Connect Google"}{" "}
+              <ArrowRight size={18} />
             </button>
           </form>
           {canConnect ? (
             <p className="helper">
-              After approval, you’ll get a private copy button for the refresh
-              token. Paste it directly into Vercel to complete the connection.
+              Your connection is saved automatically and encrypted on the
+              server. No token copying or redeployment is needed.
             </p>
           ) : (
             <p className="form-error" role="status">
-              Your Google client needs configuration before you can connect.
-              Follow the setup details below, then redeploy.
+              Your Google client and private storage need configuration before
+              you can connect. Follow the setup details below, then redeploy.
             </p>
           )}
           <span className="google-connect-caption">
@@ -66,9 +86,12 @@ export default async function GoogleSetup() {
             formatting stay intact.
           </span>
         </>
-      ) : (
-        <GoogleVerification />
-      )}
+      }
+      {ready ? <GoogleVerification /> : null}
+      <p className="helper">
+        Google apps in Testing expire access after seven days. When that
+        happens, use Reconnect Google here.
+      </p>
       <details open={!canConnect}>
         <summary>Google Cloud & Vercel setup details</summary>
         <p>
@@ -101,9 +124,9 @@ export default async function GoogleSetup() {
             values out of chat.
           </li>
           <li>
-            Connect Google below. Copy the refresh token from the private masked
-            completion page directly into GOOGLE_REFRESH_TOKEN in Vercel, then
-            redeploy again.
+            Connect a private Vercel Blob store to this project. Its server-only
+            storage credentials are configured once. Connect Google above;
+            subsequent connections are saved automatically without redeployment.
           </li>
         </ol>
         <div className="settings-detail">
@@ -113,7 +136,7 @@ export default async function GoogleSetup() {
           </strong>
         </div>
         <div className="settings-detail">
-          <span>Refresh token</span>
+          <span>Saved Google connection</span>
           <strong>{ready ? "Configured on server" : "Not configured"}</strong>
         </div>
         <p className="helper">
@@ -128,17 +151,6 @@ export default async function GoogleSetup() {
           cells, formulas and formatting are never targeted.
         </p>
       </details>
-      {ready ? (
-        <form action="/api/google" method="post" style={{ marginTop: 24 }}>
-          <button
-            className="btn btn-outline"
-            disabled={!canConnect}
-            type="submit"
-          >
-            Reconnect Google
-          </button>
-        </form>
-      ) : null}
       <p>
         <Link href="/settings">Return to Settings</Link>
       </p>

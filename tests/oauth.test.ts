@@ -12,7 +12,15 @@ import {
 } from "@/lib/google-sheets/oauth";
 import { POST as start } from "@/app/api/google/route";
 import { GET as callback } from "@/app/api/google/callback/route";
+import { get, put } from "@vercel/blob";
+vi.mock("@vercel/blob", () => ({ get: vi.fn(), put: vi.fn() }));
 beforeEach(() => {
+  vi.stubEnv("BLOB_READ_WRITE_TOKEN", "fake-private-store-token");
+  vi.stubEnv("VERCEL_BLOB_RETRIES", "0");
+  vi.mocked(put)
+    .mockReset()
+    .mockResolvedValue({} as never);
+  vi.mocked(get).mockReset().mockResolvedValue(null);
   vi.stubEnv("APP_PASSWORD", "fake-private-app-password");
   vi.stubEnv("SESSION_SECRET", "fake-session-secret-at-least-32-characters");
   vi.stubEnv("APP_ORIGIN", "https://training.example.com");
@@ -89,7 +97,7 @@ describe("private direct OAuth setup", () => {
     expect(response.headers.get("set-cookie")).toMatch(/HttpOnly/);
     expect(response.headers.get("set-cookie")).toMatch(/SameSite=lax/);
   });
-  it("validates callback before exchange and returns a no-store masked token page only on a valid proof", async () => {
+  it("validates callback before exchange, saves the credential privately, and never sends it to the browser", async () => {
     const exchange = vi
       .spyOn(OAuth2Client.prototype, "getToken")
       .mockResolvedValue({
@@ -116,8 +124,20 @@ describe("private direct OAuth setup", () => {
     );
     expect(response.status).toBe(200);
     const html = await response.text();
-    expect(html).toContain('type="password"');
-    expect(html).toContain("fake-refresh-only-for-test");
+    expect(html).toContain("Google is connected.");
+    expect(html).not.toContain("fake-refresh-only-for-test");
+    expect(put).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(put).mock.calls[0][2]).toMatchObject({
+      access: "private",
+      allowOverwrite: false,
+    });
+    expect(vi.mocked(put).mock.calls[1][2]).toMatchObject({
+      access: "private",
+      allowOverwrite: true,
+    });
+    expect(vi.mocked(put).mock.calls[1][1]).not.toContain(
+      "fake-refresh-only-for-test",
+    );
     expect(html).not.toMatch(/localStorage|sessionStorage|console\./);
     expect(response.headers.get("cache-control")).toContain("no-store");
     expect(response.headers.get("content-security-policy")).toContain(
@@ -125,5 +145,22 @@ describe("private direct OAuth setup", () => {
     );
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
     expect(exchange).toHaveBeenCalledTimes(1);
+  });
+  it("rejects replayed callbacks across instances before exchanging a code", async () => {
+    vi.mocked(put).mockRejectedValueOnce(
+      new Error("already exists with sensitive provider details"),
+    );
+    const exchange = vi.spyOn(OAuth2Client.prototype, "getToken");
+    const begun = beginAuthorization(makeSession());
+    const state = new URL(begun.url).searchParams.get("state");
+    const response = await callback(
+      new NextRequest(
+        `https://training.example.com/api/google/callback?code=fake-code&state=${state}`,
+        { headers: { cookie: `${OAUTH_COOKIE}=${begun.cookie}` } },
+      ),
+    );
+    expect(response.status).toBe(409);
+    expect(exchange).not.toHaveBeenCalled();
+    expect(await response.text()).not.toContain("sensitive provider details");
   });
 });

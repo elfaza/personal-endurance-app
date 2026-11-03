@@ -182,7 +182,11 @@ export function Shell({ children }: { children: ReactNode }) {
               <Button variant="outline" onClick={() => void refresh()}>
                 Try again
               </Button>
-              <Link href="/settings/google">Connection settings</Link>
+              <Link href="/settings/google" className="btn btn-primary">
+                {error.message.includes("Google authorization failed")
+                  ? "Reconnect Google"
+                  : "Connection settings"}
+              </Link>
             </div>
           ) : null}
           {loading && pathname !== "/settings/google" ? (

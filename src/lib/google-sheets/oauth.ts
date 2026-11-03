@@ -4,6 +4,7 @@ import { CodeChallengeMethod, OAuth2Client } from "google-auth-library";
 import { z } from "zod";
 import { equal, authConfigured, validSession } from "../server/auth";
 import { AppError } from "../server/errors";
+import { tokenStoreConfigured } from "./token-store";
 
 export const OAUTH_COOKIE = "pe_google_state";
 export const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
@@ -12,7 +13,7 @@ export const oauthConfigured = () =>
 export const oauthReady = () =>
   process.env.GOOGLE_AUTH_MODE === "oauth" &&
   oauthConfigured() &&
-  !!process.env.GOOGLE_REFRESH_TOKEN;
+  !!(process.env.GOOGLE_REFRESH_TOKEN || tokenStoreConfigured());
 
 export function appOrigin() {
   try {
@@ -69,6 +70,11 @@ function proof(value: string) {
 export function beginAuthorization(session: string | undefined) {
   if (process.env.GOOGLE_AUTH_MODE !== "oauth" || !validSession(session))
     throw new AppError("Sign in before connecting Google.", 401);
+  if (!tokenStoreConfigured() || process.env.VERCEL_BLOB_RETRIES !== "0")
+    throw new AppError(
+      "Connect a private credential store before connecting Google.",
+      503,
+    );
   const state = randomBytes(32).toString("base64url");
   const stamp = `${Date.now()}.${state}`;
   const verifier = proof(`pkce:${stamp}`);

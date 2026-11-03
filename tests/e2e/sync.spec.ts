@@ -94,6 +94,10 @@ test("both commute rides appear, individual journals override shared RPE, and an
   await page.goto("/activities/am");
   await expect(score).toContainText("4 / 10");
   await page.goto("/analytics");
+  // Select the fixture's week explicitly rather than depending on today's date.
+  await page.getByLabel("Time range").selectOption("custom");
+  await page.getByLabel("Start date").fill("2026-10-26");
+  await page.getByLabel("End date").fill("2026-11-01");
   await expect(page.locator(".load-value")).toContainText("300");
   await expect(page.locator(".load-card")).toContainText("2 of 2");
 });
