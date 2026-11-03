@@ -31,6 +31,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Production is Vercel-authenticated too. Install metadata must use
+            the signed-in browser session, just like preview deployments. */}
+        <link
+          rel="manifest"
+          href="/manifest.webmanifest"
+          crossOrigin="use-credentials"
+        />
         <script
           id="theme-init"
           dangerouslySetInnerHTML={{

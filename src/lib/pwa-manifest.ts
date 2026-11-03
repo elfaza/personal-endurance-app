@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
-export default function manifest(): MetadataRoute.Manifest {
+
+export function pwaManifest(): MetadataRoute.Manifest {
   return {
     id: "/",
     name: "Personal Endurance",
