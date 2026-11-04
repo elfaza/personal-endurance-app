@@ -12,7 +12,11 @@ import {
   type Change,
   type Snapshot,
 } from "../google-sheets/rows";
-import { sheets } from "../google-sheets/client";
+import {
+  sheets,
+  type SheetCommit,
+  type SheetInventory,
+} from "../google-sheets/client";
 import { planWriteRequests } from "../google-sheets/training-plan";
 import { trackerWriteRequests } from "../google-sheets/tracker";
 import { configuration } from "./config";
@@ -20,6 +24,7 @@ import { AppError } from "./errors";
 
 type Logs = Record<Dataset, string[][]>;
 export interface Repository {
+  withWrite?<T>(work: (repo: Repository) => Promise<T>): Promise<T>;
   read(): Promise<{ snapshot: Snapshot; initialized: boolean }>;
   commit(
     changes: Change[],
@@ -181,36 +186,73 @@ export class SheetsRepository implements Repository {
   }
   async commit(changes: Change[], op: string, expectedSnapshot?: Snapshot) {
     return this.client.withWriteLock(async (commit) => {
-      const { snapshot, initialized } = await this.read();
-      if (!initialized)
-        throw new AppError(
-          "Inspect and initialize the dedicated PE worksheets in Settings first.",
-          409,
-        );
-      // Validate all records used for decisions (including activity-link
-      // uniqueness), not just modified IDs, while holding the shared lock.
-      if (
-        !snapshot.Meta.some((r) => r.id === `op:${op}`) &&
-        expectedSnapshot &&
-        snapshotFingerprint(snapshot) !== snapshotFingerprint(expectedSnapshot)
-      )
-        throw new AppError(
-          "Training changed elsewhere. Refresh and review the latest data before saving.",
-          409,
-        );
-      const rows = prepare(snapshot, changes, op);
-      if (!rows.length) return;
-      await this.client.append(
-        rows,
-        commit,
-        [
-          ...planWriteRequests(snapshot, changes),
-          ...trackerWriteRequests(snapshot, changes),
-        ],
-        snapshot.trainingPlan,
-        snapshot.tracker,
-      );
+      const current = await this.read();
+      await this.commitSnapshot(current, changes, op, commit, expectedSnapshot);
     });
+  }
+  async withWrite<T>(work: (repo: Repository) => Promise<T>): Promise<T> {
+    return this.client.withWriteLock(async (commit) => {
+      // Decisions and validation use one fresh snapshot inside the shared lock.
+      const current = await this.read();
+      let submitted = false;
+      return work({
+        read: async () => current,
+        commit: async (changes, op, expectedSnapshot) => {
+          if (submitted)
+            throw new AppError("A save may only be submitted once.", 409);
+          submitted = true;
+          await this.commitSnapshot(
+            current,
+            changes,
+            op,
+            commit,
+            expectedSnapshot,
+          );
+        },
+      });
+    });
+  }
+  private async commitSnapshot(
+    current: {
+      snapshot: Snapshot;
+      initialized: boolean;
+      inventory: SheetInventory;
+    },
+    changes: Change[],
+    op: string,
+    commit: SheetCommit,
+    expectedSnapshot?: Snapshot,
+  ) {
+    const { snapshot, initialized, inventory } = current;
+    if (!initialized)
+      throw new AppError(
+        "Inspect and initialize the dedicated PE worksheets in Settings first.",
+        409,
+      );
+    // Validate all records used for decisions (including activity-link
+    // uniqueness), not just modified IDs, while holding the shared lock.
+    if (
+      !snapshot.Meta.some((r) => r.id === `op:${op}`) &&
+      expectedSnapshot &&
+      snapshotFingerprint(snapshot) !== snapshotFingerprint(expectedSnapshot)
+    )
+      throw new AppError(
+        "Training changed elsewhere. Refresh and review the latest data before saving.",
+        409,
+      );
+    const rows = prepare(snapshot, changes, op);
+    if (!rows.length) return;
+    await this.client.append(
+      rows,
+      commit,
+      [
+        ...planWriteRequests(snapshot, changes),
+        ...trackerWriteRequests(snapshot, changes),
+      ],
+      snapshot.trainingPlan,
+      snapshot.tracker,
+      inventory,
+    );
   }
 }
 export function repository(): Repository {

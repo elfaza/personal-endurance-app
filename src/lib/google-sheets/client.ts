@@ -47,6 +47,7 @@ const sheetSchema = z.object({
 });
 export type SheetInventory = z.infer<typeof sheetSchema>;
 export class SheetsClient {
+  private quotaUntil = { read: 0, write: 0 };
   private token?: { value: string; expiry: number; credential: string };
   private pending?: { credential: string; promise: Promise<string> };
   constructor(private http: typeof fetch = fetch) {}
@@ -107,6 +108,12 @@ export class SheetsClient {
     return this.send(path, init);
   }
   private async send(path: string, init: RequestInit = {}) {
+    const quota = init.method && init.method !== "GET" ? "write" : "read";
+    if (this.quotaUntil[quota] > Date.now())
+      throw new AppError(
+        "Google Sheets is temporarily limiting requests. Wait about a minute before continuing. No save was retried.",
+        429,
+      );
     const id = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
     if (!id || !/^[\w-]+$/.test(id))
       throw new AppError("Configure a valid Google spreadsheet ID.", 503);
@@ -123,6 +130,7 @@ export class SheetsClient {
       },
     );
     if (!response.ok) {
+      if (response.status === 429) this.quotaUntil[quota] = Date.now() + 60000;
       if (response.status === 401) this.token = undefined;
       throw new AppError(
         response.status === 403
@@ -130,7 +138,7 @@ export class SheetsClient {
           : response.status === 429
             ? "Google Sheets is rate limiting requests. No write retry was attempted. Refresh before trying again."
             : "Google Sheets request failed. No automatic write retry was attempted; refresh before retrying.",
-        502,
+        response.status === 429 ? 429 : 502,
       );
     }
     return response.json();
@@ -150,6 +158,11 @@ export class SheetsClient {
         "Google Sheets writes are disabled. Set GOOGLE_SHEETS_WRITES_ENABLED=true and redeploy.",
         403,
       );
+    if (Math.max(this.quotaUntil.read, this.quotaUntil.write) > Date.now())
+      throw new AppError(
+        "Google Sheets is temporarily limiting requests. Wait about a minute before saving. No save was sent.",
+        429,
+      );
     const sheetId = randomInt(1, 2147483647);
     try {
       // Google enforces unique worksheet titles, serializing all app instances.
@@ -166,7 +179,8 @@ export class SheetsClient {
           },
         },
       ]);
-    } catch {
+    } catch (error) {
+      if (error instanceof AppError && error.status === 429) throw error;
       throw new AppError(
         "Another save is running or needs review, or Google editing access is missing. Refresh first. If PE_Write_Lock remains, request recovery; do not delete it while a save may be running.",
         409,
@@ -211,9 +225,11 @@ export class SheetsClient {
       ),
     );
   }
-  async read(
-    inventory?: SheetInventory,
-  ): Promise<{ snapshot: Snapshot; initialized: boolean }> {
+  async read(inventory?: SheetInventory): Promise<{
+    snapshot: Snapshot;
+    initialized: boolean;
+    inventory: SheetInventory;
+  }> {
     const info = inventory ?? (await this.inspect());
     const present = datasets.filter((d) =>
       info.sheets.some((s) => s.properties.title === `PE_${d}`),
@@ -226,7 +242,8 @@ export class SheetsClient {
       Activities: [],
       Meta: [],
     };
-    if (!present.length) return { snapshot, initialized: false };
+    if (!present.length)
+      return { snapshot, initialized: false, inventory: info };
     const params = new URLSearchParams();
     present.forEach((d) => params.append("ranges", `'PE_${d}'!A:G`));
     const result = z
@@ -242,8 +259,19 @@ export class SheetsClient {
     const source = snapshot.Meta.find(
       (r) => r.id === PLAN_MARKER && !r.deleted && r.payload.enabled === true,
     );
+    const tracker = snapshot.Meta.find(
+      (r) =>
+        r.id === TRACKER_MARKER && !r.deleted && r.payload.enabled === true,
+    );
+    const titles = [
+      ...(source ? [PLAN_TAB] : []),
+      ...(tracker ? [LOG_TAB, ROADMAP_TAB, DASHBOARD_TAB] : []),
+    ];
+    const connected = titles.length
+      ? await this.readGrids(titles, info)
+      : new Map<string, PlanGrid>();
     if (source) {
-      const grid = await this.readPlanGrid(info);
+      const grid = connected.get(PLAN_TAB)!;
       if (grid.sheetId !== source.payload.sheetId)
         throw new AppError(
           "The connected Training Plan worksheet identity changed. Review its setup before editing.",
@@ -347,12 +375,13 @@ export class SheetsClient {
         });
       }
     }
-    const tracker = snapshot.Meta.find(
-      (r) =>
-        r.id === TRACKER_MARKER && !r.deleted && r.payload.enabled === true,
-    );
     if (tracker) {
-      const state = await this.readTracker(info, snapshot.Goals);
+      const state = trackerState(
+        connected.get(LOG_TAB)!,
+        connected.get(ROADMAP_TAB)!,
+        connected.get(DASHBOARD_TAB)!,
+        snapshot.Goals,
+      );
       if (
         state.log.sheetId !== tracker.payload.logId ||
         state.roadmap.sheetId !== tracker.payload.roadmapId ||
@@ -365,7 +394,11 @@ export class SheetsClient {
       snapshot.tracker = state;
       snapshot.Goals = readRoadmapGoals(state);
     }
-    return { snapshot, initialized: present.length === datasets.length };
+    return {
+      snapshot,
+      initialized: present.length === datasets.length,
+      inventory: info,
+    };
   }
   async readPlanGrid(info?: SheetInventory): Promise<PlanGrid> {
     return this.readGrid(PLAN_TAB, info);
@@ -374,43 +407,64 @@ export class SheetsClient {
     info?: SheetInventory,
     goals: Snapshot["Goals"] = [],
   ): Promise<TrackerState> {
-    const inventory = info ?? (await this.inspect());
-    const [log, roadmap, dashboard] = await Promise.all(
-      [LOG_TAB, ROADMAP_TAB, DASHBOARD_TAB].map((title) =>
-        this.readGrid(title, inventory),
-      ),
+    const grids = await this.readGrids(
+      [LOG_TAB, ROADMAP_TAB, DASHBOARD_TAB],
+      info,
     );
-    return trackerState(log, roadmap, dashboard, goals);
+    return trackerState(
+      grids.get(LOG_TAB)!,
+      grids.get(ROADMAP_TAB)!,
+      grids.get(DASHBOARD_TAB)!,
+      goals,
+    );
   }
   async readGrid(title: string, info?: SheetInventory): Promise<PlanGrid> {
+    return (await this.readGrids([title], info)).get(title)!;
+  }
+  async readGrids(
+    titles: string[],
+    info?: SheetInventory,
+  ): Promise<Map<string, PlanGrid>> {
     const inventory = info ?? (await this.inspect());
-    const sheet = inventory.sheets.find(
-      (s) => s.properties.title === title,
-    )?.properties;
-    if (!sheet?.gridProperties)
-      throw new AppError(
-        `The ${title} worksheet is missing or its layout could not be read.`,
-        409,
-      );
-    const { rowCount, columnCount } = sheet.gridProperties;
-    if (rowCount > 10000 || columnCount > 52)
-      throw new AppError(
-        "Training Plan exceeds the supported live layout (10,000 rows and 52 columns). Archive older rows before connecting.",
-        409,
-      );
-    const lastColumn =
-      columnCount <= 26
-        ? String.fromCharCode(64 + columnCount)
-        : `A${String.fromCharCode(64 + columnCount - 26)}`;
-    const range = `'${title.replaceAll("'", "''")}'!A1:${lastColumn}${rowCount}`;
+    const params = new URLSearchParams();
+    const targets = titles.map((title) => {
+      const sheet = inventory.sheets.find(
+        (s) => s.properties.title === title,
+      )?.properties;
+      if (!sheet?.gridProperties)
+        throw new AppError(
+          `The ${title} worksheet is missing or its layout could not be read.`,
+          409,
+        );
+      const { rowCount, columnCount } = sheet.gridProperties;
+      if (rowCount > 10000 || columnCount > 52)
+        throw new AppError(
+          "Training Plan exceeds the supported live layout (10,000 rows and 52 columns). Archive older rows before connecting.",
+          409,
+        );
+      const lastColumn =
+        columnCount <= 26
+          ? String.fromCharCode(64 + columnCount)
+          : `A${String.fromCharCode(64 + columnCount - 26)}`;
+      const range = `'${title.replaceAll("'", "''")}'!A1:${lastColumn}${rowCount}`;
+      params.append("ranges", range);
+      return { title, sheet, rowCount, columnCount };
+    });
     const raw = await this.request(
-      `?ranges=${encodeURIComponent(range)}&includeGridData=true&fields=sheets(properties(sheetId,title),data(rowData(values(userEnteredValue,effectiveValue,formattedValue,dataValidation,note))))`,
+      `?${params}&includeGridData=true&fields=sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),data(rowData(values(userEnteredValue,effectiveValue,formattedValue,dataValidation,note))))`,
     );
     const parsed = z
       .object({
         sheets: z.array(
           z.object({
-            properties: z.object({ sheetId: z.number(), title: z.string() }),
+            properties: z.object({
+              sheetId: z.number(),
+              title: z.string(),
+              gridProperties: z.object({
+                rowCount: z.number(),
+                columnCount: z.number(),
+              }),
+            }),
             data: z
               .array(
                 z.object({
@@ -430,23 +484,39 @@ export class SheetsClient {
         ),
       })
       .parse(raw);
-    const found = parsed.sheets.find(
-      (s) =>
-        s.properties.sheetId === sheet.sheetId && s.properties.title === title,
+    return new Map(
+      targets.map(({ title, sheet, rowCount, columnCount }) => {
+        const found = parsed.sheets.find(
+          (s) =>
+            s.properties.sheetId === sheet.sheetId &&
+            s.properties.title === title,
+        );
+        if (!found)
+          throw new AppError(
+            `The ${title} read returned the wrong worksheet.`,
+            409,
+          );
+        if (
+          found.properties.gridProperties.rowCount !== rowCount ||
+          found.properties.gridProperties.columnCount !== columnCount
+        )
+          throw new AppError(
+            `The ${title} worksheet layout changed while reading. Refresh before editing.`,
+            409,
+          );
+        return [
+          title,
+          {
+            sheetId: sheet.sheetId,
+            rowCount,
+            columnCount,
+            rows: (found.data?.[0]?.rowData ?? []).map(
+              (r) => (r.values ?? []) as PlanCell[],
+            ),
+          },
+        ];
+      }),
     );
-    if (!found)
-      throw new AppError(
-        `The ${title} read returned the wrong worksheet.`,
-        409,
-      );
-    return {
-      sheetId: sheet.sheetId,
-      rowCount,
-      columnCount,
-      rows: (found.data?.[0]?.rowData ?? []).map(
-        (r) => (r.values ?? []) as PlanCell[],
-      ),
-    };
   }
   async enableTrainingPlan() {
     return this.withWriteLock(async (commit) => {
@@ -575,9 +645,10 @@ export class SheetsClient {
     extraRequests: unknown[] = [],
     plan?: TrainingPlanState,
     tracker?: TrackerState,
+    inventory?: SheetInventory,
   ) {
     if (!rows.length) return;
-    const info = await this.inspect();
+    const info = inventory ?? (await this.inspect());
     const requests = rows.map((r) => {
       const sheet = info.sheets.find(
         (s) => s.properties.title === `PE_${r.dataset}`,
@@ -602,8 +673,17 @@ export class SheetsClient {
       };
     });
     // One atomic Sheets request for workout + link + reschedule history changes.
+    const checkTitles = extraRequests.length
+      ? [
+          ...(plan ? [PLAN_TAB] : []),
+          ...(tracker ? [LOG_TAB, ROADMAP_TAB, DASHBOARD_TAB] : []),
+        ]
+      : [];
+    const latestGrids = checkTitles.length
+      ? await this.readGrids(checkTitles, info)
+      : new Map<string, PlanGrid>();
     if (plan && extraRequests.length) {
-      const latest = await this.readPlanGrid(info);
+      const latest = latestGrids.get(PLAN_TAB)!;
       if (fingerprint([JSON.stringify(latest)]) !== plan.hash)
         throw new AppError(
           "Training Plan changed just before saving. Refresh and review the newer version.",
@@ -611,7 +691,12 @@ export class SheetsClient {
         );
     }
     if (tracker && extraRequests.length) {
-      const latest = await this.readTracker(info, tracker.goalShadow);
+      const latest = trackerState(
+        latestGrids.get(LOG_TAB)!,
+        latestGrids.get(ROADMAP_TAB)!,
+        latestGrids.get(DASHBOARD_TAB)!,
+        tracker.goalShadow,
+      );
       if (latest.hash !== tracker.hash)
         throw new AppError(
           "Workout Log, roadmap or Dashboard changed just before saving. Refresh before trying again.",

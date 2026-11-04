@@ -52,7 +52,11 @@ test("a saved session RPE appears in the journal and both linked commute activit
     revision: string;
     feedback: Feedback;
   }[] = [];
-  await page.route("**/api/data", (route) => route.fulfill({ json: fixture }));
+  let reads = 0;
+  await page.route("**/api/data", (route) => {
+    reads++;
+    return route.fulfill({ json: fixture });
+  });
   await page.route("**/api/activities/*", (route) => {
     const id = route.request().url().split("/").at(-1);
     return route.fulfill({ json: fixture.activities.find((a) => a.id === id) });
@@ -80,6 +84,7 @@ test("a saved session RPE appears in the journal and both linked commute activit
     .click();
   await expect(dialog).not.toBeVisible();
   await expect(rpeRow).toContainText("6 / 10");
+  expect(reads).toBe(2); // initial load plus one authoritative post-save refresh
   expect(commands).toHaveLength(1);
   expect(commands[0]).toMatchObject({
     action: "feedback",

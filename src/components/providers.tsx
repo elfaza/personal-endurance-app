@@ -13,12 +13,26 @@ import { Check, CircleAlert, X } from "lucide-react";
 import type { AppData } from "@/lib/domain";
 
 export const SNAPSHOT_KEY = "pe.offline.v1";
+let cooldownUntil = 0;
+export class RequestError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
+}
 export async function request<T>(
   url: string,
   body?: unknown,
   method = "POST",
   operationId?: string,
 ): Promise<T> {
+  if (url !== "/api/auth" && Date.now() < cooldownUntil)
+    throw new RequestError(
+      `Please wait ${Math.ceil((cooldownUntil - Date.now()) / 1000)} seconds before continuing. No save was sent.`,
+      429,
+    );
   const res = await fetch(url, {
     method: body === undefined && method === "POST" ? "GET" : method,
     cache: "no-store",
@@ -37,7 +51,16 @@ export async function request<T>(
       localStorage.removeItem(SNAPSHOT_KEY);
       location.assign(new URL("/login", location.origin).href);
     }
-    throw new Error(json.error ?? "Request failed.");
+    if (res.status === 429 && url !== "/api/auth") {
+      const seconds = Number(res.headers.get("Retry-After"));
+      cooldownUntil =
+        Date.now() +
+        (Number.isFinite(seconds) && seconds > 0
+          ? Math.min(seconds, 300)
+          : 60) *
+          1000;
+    }
+    throw new RequestError(json.error ?? "Request failed.", res.status);
   }
   return json;
 }
@@ -47,6 +70,8 @@ type Context = {
   loading: boolean;
   offline: boolean;
   syncing: boolean;
+  editingPaused: boolean;
+  refreshRequired: boolean;
   refresh: () => Promise<unknown>;
   sync: () => Promise<void>;
   save: (
@@ -59,6 +84,14 @@ const DataContext = createContext<Context | null>(null);
 export function Providers({ children }: { children: ReactNode }) {
   const [offline, setOffline] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [needsRefresh, setNeedsRefresh] = useState(false);
+  const savingRef = useRef(false);
+  const loadData = useCallback(async (url: string) => {
+    const result = await request<AppData>(url);
+    setNeedsRefresh(false);
+    return result;
+  }, []);
   const [toast, setToast] = useState<{
     message: string;
     error: boolean;
@@ -69,17 +102,20 @@ export function Providers({ children }: { children: ReactNode }) {
   );
   const { data, error, isLoading, mutate } = useSWR<AppData, Error>(
     "/api/data",
-    (url) => request<AppData>(url),
+    loadData,
     {
-      refreshInterval: 45000,
+      refreshInterval: saving ? 0 : 45000,
       refreshWhenHidden: false,
       refreshWhenOffline: false,
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
+      revalidateOnFocus: !saving,
+      revalidateOnReconnect: !saving,
+      shouldRetryOnError: (error) =>
+        !(error instanceof RequestError && error.status === 429),
       errorRetryCount: 2,
     },
   );
   const sync = useCallback(async () => {
+    if (savingRef.current) return;
     if (!navigator.onLine) {
       notify("You’re offline. Reconnect before syncing.", true);
       return;
@@ -157,6 +193,12 @@ export function Providers({ children }: { children: ReactNode }) {
   }, [autoSyncEnabled, lastSuccess, sync, offline]);
   const save = useCallback(
     async (body: unknown, optimistic?: (data: AppData) => AppData) => {
+      if (savingRef.current)
+        throw new Error("A save is still running. Wait for it to finish.");
+      if (needsRefresh)
+        throw new Error(
+          "Your last save succeeded, but the summary needs refreshing before another edit.",
+        );
       if (data?.configured.readOnly)
         throw new Error(
           "Editing is disabled. Complete Google Sheets setup and enable writes in the server configuration.",
@@ -166,20 +208,38 @@ export function Providers({ children }: { children: ReactNode }) {
           "Offline reading is available. Reconnect before editing.",
         );
       const operationId = crypto.randomUUID();
-      await mutate(
-        async () => {
-          await request("/api/training", body, "POST", operationId);
-          return await request<AppData>("/api/data");
-        },
-        {
-          optimisticData: optimistic && data ? optimistic(data) : undefined,
-          rollbackOnError: true,
-          revalidate: true,
-          populateCache: true,
-        },
-      );
+      savingRef.current = true;
+      setSaving(true);
+      try {
+        await mutate(
+          async () => {
+            await request("/api/training", body, "POST", operationId);
+            try {
+              return await loadData("/api/data");
+            } catch {
+              // The write is confirmed. A failed summary read must not invite a duplicate save.
+              setNeedsRefresh(true);
+              notify(
+                "Saved successfully, but the summary could not refresh. Refresh before editing again.",
+                true,
+              );
+              return optimistic && data ? optimistic(data) : data;
+            }
+          },
+          {
+            optimisticData: optimistic && data ? optimistic(data) : undefined,
+            rollbackOnError: true,
+            // The mutation already fetched the authoritative summary once.
+            revalidate: false,
+            populateCache: true,
+          },
+        );
+      } finally {
+        savingRef.current = false;
+        setSaving(false);
+      }
     },
-    [mutate, data],
+    [mutate, data, needsRefresh, notify, loadData],
   );
   return (
     <DataContext.Provider
@@ -189,6 +249,8 @@ export function Providers({ children }: { children: ReactNode }) {
         loading: isLoading,
         offline,
         syncing,
+        editingPaused: saving || needsRefresh,
+        refreshRequired: needsRefresh,
         sync,
         save,
         refresh: () => mutate(),
@@ -220,6 +282,6 @@ export function useTraining() {
   return ctx;
 }
 export function useEditingDisabled() {
-  const { data, offline } = useTraining();
-  return offline || !!data?.configured.readOnly;
+  const { data, offline, editingPaused } = useTraining();
+  return offline || editingPaused || !!data?.configured.readOnly;
 }

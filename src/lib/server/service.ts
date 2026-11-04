@@ -26,7 +26,7 @@ import {
 import { garmin } from "../garmin/client";
 import { type Change, type Snapshot, type Stored } from "../google-sheets/rows";
 import { configuration } from "./config";
-import { repository, withLock } from "./repository";
+import { repository, withLock, type Repository } from "./repository";
 import { AppError } from "./errors";
 import { manualActivities } from "../measurements";
 import { historicalLinkChanges } from "../google-sheets/reconcile";
@@ -200,10 +200,17 @@ const actionSchema = z.discriminatedUnion("action", [
 function expected(snapshot: Snapshot, dataset: Change["dataset"], id: string) {
   return snapshot[dataset].find((r) => r.id === id)?.fingerprint ?? null;
 }
-export async function mutate(input: unknown, op: string) {
-  const cmd = actionSchema.parse(input);
+async function withMutationRepository<T>(
+  work: (repo: Repository) => Promise<T>,
+) {
   return withLock(async () => {
     const repo = repository();
+    return repo.withWrite ? repo.withWrite(work) : work(repo);
+  });
+}
+export async function mutate(input: unknown, op: string) {
+  const cmd = actionSchema.parse(input);
+  return withMutationRepository(async (repo) => {
     const { snapshot, initialized } = await repo.read();
     if (snapshot.Meta.some((r) => r.id === `op:${op}`)) return { ok: true };
     const data = toData(snapshot, initialized);
@@ -242,7 +249,10 @@ export async function mutate(input: unknown, op: string) {
           dataset: "Workouts",
           id,
           expected: null,
-          payload: payload({ ...workout, createdAt: new Date().toISOString() }),
+          payload: payload({
+            ...workout,
+            createdAt: new Date().toISOString(),
+          }),
         });
       }
     } else if (cmd.action === "create") {
@@ -460,7 +470,11 @@ export async function mutate(input: unknown, op: string) {
             dataset: "ActivityLinks",
             id: w.id,
             expected: expected(snapshot, "ActivityLinks", w.id),
-            payload: { workoutId: w.id, activityId: ids[0], activityIds: ids },
+            payload: {
+              workoutId: w.id,
+              activityId: ids[0],
+              activityIds: ids,
+            },
           });
         } else if (old)
           changes.push({
@@ -637,18 +651,7 @@ export async function activityDetail(id: string) {
     if (!/^\d+$/.test(id)) throw new AppError("Invalid Garmin activity ID.");
     const detail = await garmin().detail(id);
     const merged = { ...detail, hrZones: cached.hrZones };
-    await repo.commit(
-      [
-        {
-          dataset: "Activities",
-          id,
-          expected: expected(snapshot, "Activities", id),
-          payload: payload(merged),
-        },
-      ],
-      randomUUID(),
-      snapshot,
-    );
+    // Viewing detail is read-only. Persistent activity data is updated by sync.
     return merged;
   });
 }

@@ -73,12 +73,10 @@ function fakeGoogle(initialized = false) {
     const parsed = new URL(String(url));
     if (parsed.pathname.includes("values:batchGet"))
       return response({
-        valueRanges: parsed.searchParams
-          .getAll("ranges")
-          .map((range) => ({
-            values:
-              tabs.find((t) => range.startsWith(`'${t.title}'!`))?.values ?? [],
-          })),
+        valueRanges: parsed.searchParams.getAll("ranges").map((range) => ({
+          values:
+            tabs.find((t) => range.startsWith(`'${t.title}'!`))?.values ?? [],
+        })),
       });
     if (parsed.pathname.includes("/values/")) {
       const range = decodeURIComponent(parsed.pathname.split("/values/")[1]);
@@ -115,8 +113,44 @@ beforeEach(() => {
   vi.stubEnv("GOOGLE_SHEETS_SPREADSHEET_ID", "test-sheet");
   vi.stubEnv("GOOGLE_SHEETS_WRITES_ENABLED", "true");
 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.useRealTimers();
+});
 describe("OAuth Sheets persistence and shared save fencing", () => {
+  it("backs off reads after a quota rejection without retrying writes or stranding a validation lock", async () => {
+    vi.useFakeTimers();
+    const server = fakeGoogle(true);
+    let rejectReads = true;
+    const http = vi.fn<typeof fetch>((url, init) => {
+      if (
+        rejectReads &&
+        String(url).includes("sheets.googleapis.com") &&
+        init?.method !== "POST"
+      )
+        return Promise.resolve(Response.json({}, { status: 429 }));
+      return server.http(url, init);
+    });
+    const client = new SheetsClient(http);
+    await expect(
+      client.withWriteLock(async () => {
+        await client.inspect();
+      }),
+    ).rejects.toMatchObject({ status: 429 });
+    expect(server.tabs().some((t) => t.title === WRITE_LOCK_TITLE)).toBe(false);
+    const before = http.mock.calls.length;
+    await expect(client.inspect()).rejects.toMatchObject({ status: 429 });
+    expect(http).toHaveBeenCalledTimes(before);
+    await expect(
+      client.withWriteLock(async () => {
+        throw new Error("must not run");
+      }),
+    ).rejects.toMatchObject({ status: 429 });
+    expect(http).toHaveBeenCalledTimes(before);
+    rejectReads = false;
+    vi.advanceTimersByTime(60001);
+    expect((await client.inspect()).spreadsheetId).toBe("test-sheet");
+  });
   it("initializes dedicated tabs and preserves every original cell", async () => {
     const server = fakeGoogle();
     const before = structuredClone(server.tabs()[0]);

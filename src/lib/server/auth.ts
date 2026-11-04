@@ -113,7 +113,13 @@ export function errorResponse(error: unknown) {
         : "The request could not be completed. Your saved data has been preserved.";
   return NextResponse.json(
     { error: message },
-    { status, headers: { "Cache-Control": "no-store" } },
+    {
+      status,
+      headers: {
+        "Cache-Control": "no-store",
+        ...(status === 429 ? { "Retry-After": "60" } : {}),
+      },
+    },
   );
 }
 export async function jsonBody(req: NextRequest) {

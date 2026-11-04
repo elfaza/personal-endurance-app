@@ -20,7 +20,11 @@ An externally entered Training Plan RPE is exposed even if no PE_Feedback row ex
 
 ## Save guarantees
 
-All tracker updates join the existing atomic save and exact PE_Write_Lock worksheet fence. The source grids and PE revisions are checked under the shared lock, then checked again immediately before submission. Stale edits fail without overwriting newer data. There is no automatic retry of uncertain writes and no age-based lock stealing. Goal sidecar revision chains keep their real stored parent even though the visible source revision comes from the roadmap row.
+All tracker updates join the existing atomic save and exact PE_Write_Lock worksheet fence. Web edits read fresh PE revisions and source grids once inside the shared lock. Native source grids are checked again immediately before submission. Stale edits fail without overwriting newer data. There is no automatic retry of uncertain writes and no age-based lock stealing. Goal sidecar revision chains keep their real stored parent even though the visible source revision comes from the roadmap row.
+
+Connected native tabs are read together with one spreadsheets.get request. A normal web edit with both sources connected uses seven Sheets reads including the authoritative post-save UI refresh, plus two writes for lock acquisition and atomic commit. There is no second SWR refresh after that result is populated. Automatic polling and focus refresh pause while a save runs; activity detail viewing never writes Sheets. Quota rejections trigger a read/write-specific server cooldown and a browser cooldown, with no automatic write replay. Other apps using the same Google account and Cloud project still share Google's quotas.
+
+A confirmed save followed by a failed summary read is reported as saved. Further edits pause until a successful fresh read, preventing a refresh failure from inviting a duplicate save.
 
 External writers must also honor PE_Write_Lock to eliminate their race with app saves; Sheets provides no atomic compare-and-swap for arbitrary uncoordinated edits. The app still checks for external changes before submitting. Closed-app/background synchronization is not implied by polling while the app is active.
 

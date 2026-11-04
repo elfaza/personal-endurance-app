@@ -10,13 +10,14 @@ const bridge = vi.hoisted(() => ({
   read: vi.fn(),
   commit: vi.fn(),
   list: vi.fn(),
+  detail: vi.fn(),
 }));
 vi.mock("@/lib/server/repository", () => ({
   repository: () => bridge,
   withLock: async (work: () => Promise<unknown>) => work(),
 }));
 vi.mock("@/lib/garmin/client", () => ({
-  garmin: () => ({ list: bridge.list }),
+  garmin: () => ({ list: bridge.list, detail: bridge.detail }),
 }));
 vi.mock("@/lib/server/config", () => ({
   configuration: () => ({
@@ -26,7 +27,12 @@ vi.mock("@/lib/server/config", () => ({
     readOnly: false,
   }),
 }));
-import { getData, mutate, syncGarmin } from "@/lib/server/service";
+import {
+  getData,
+  mutate,
+  syncGarmin,
+  activityDetail,
+} from "@/lib/server/service";
 let snapshot: Snapshot;
 let serial = 0;
 function record(id: string, payload: Record<string, unknown>): Stored {
@@ -111,6 +117,18 @@ const allowNextSync = () => {
   if (sync) sync.payload.lastSuccess = "2026-10-26T00:00:00Z";
 };
 describe("commute matching through sync, storage and API data", () => {
+  it("viewing fresh Garmin detail never submits a Sheets write", async () => {
+    const activity = { ...morning, id: "1234" };
+    snapshot.Activities = [record(activity.id, activity)];
+    bridge.detail.mockResolvedValue({
+      ...activity,
+      splits: [{ index: 1, distanceKm: 21.56, durationSec: 4085, avgHr: 133 }],
+    });
+    const before = structuredClone(snapshot);
+    expect((await activityDetail(activity.id)).splits).toHaveLength(1);
+    expect(bridge.commit).not.toHaveBeenCalled();
+    expect(snapshot).toEqual(before);
+  });
   it("keeps an intentional mixed-sport replacement and associates both recorded activities", async () => {
     snapshot.Workouts = [
       record("combined", {

@@ -158,25 +158,31 @@ function fakePlanGoogle() {
         })),
       });
     if (u.searchParams.get("includeGridData")) {
-      const range = u.searchParams.get("ranges") ?? "";
-      const tab = tabs.find((t) => range.startsWith(`'${t.title}'!`))!;
-      if (tab.id === 10) onRead?.(++gridReads);
+      const selected = u.searchParams
+        .getAll("ranges")
+        .map((range) => tabs.find((t) => range.startsWith(`'${t.title}'!`))!);
+      if (selected.some((tab) => tab.id === 10)) onRead?.(++gridReads);
       return response({
-        sheets: [
-          {
-            properties: { sheetId: tab.id, title: tab.title },
-            data: [
-              {
-                rowData: Array.from(tab.rows, (values = []) => ({
-                  values: Array.from(
-                    { length: values.length },
-                    (_, i) => values[i] ?? {},
-                  ),
-                })),
-              },
-            ],
+        sheets: selected.map((tab) => ({
+          properties: {
+            sheetId: tab.id,
+            title: tab.title,
+            gridProperties: {
+              rowCount: Math.max(100, tab.rows.length),
+              columnCount: 25,
+            },
           },
-        ],
+          data: [
+            {
+              rowData: Array.from(tab.rows, (values = []) => ({
+                values: Array.from(
+                  { length: values.length },
+                  (_, i) => values[i] ?? {},
+                ),
+              })),
+            },
+          ],
+        })),
       });
     }
     return response({
@@ -186,7 +192,10 @@ function fakePlanGoogle() {
         properties: {
           sheetId: t.id,
           title: t.title,
-          gridProperties: { rowCount: 100, columnCount: 25 },
+          gridProperties: {
+            rowCount: Math.max(100, t.rows.length),
+            columnCount: 25,
+          },
         },
       })),
     });
@@ -337,6 +346,45 @@ describe("Training Plan is the canonical calendar", () => {
       "External recovery note",
     );
     expect(google.tabs().some((t) => t.title === WRITE_LOCK_TITLE)).toBe(false);
+    google.http.mockClear();
+    await repo.withWrite(async (transaction) => {
+      const fresh = (await transaction.read()).snapshot;
+      const current = fresh.Goals[0];
+      await transaction.commit(
+        [
+          {
+            dataset: "Goals",
+            id: current.id,
+            expected: current.fingerprint,
+            payload: { ...current.payload, title: "Edited inside shared lock" },
+          },
+        ],
+        "transaction-goal",
+        fresh,
+      );
+    });
+    const afterSave = (await repo.read()).snapshot;
+    expect(afterSave.Goals[0].payload.title).toBe("Edited inside shared lock");
+    const calls = google.http.mock.calls.filter(
+      ([url]) => !String(url).includes("oauth2"),
+    );
+    const reads = calls.filter(([, init]) => init?.method !== "POST");
+    // Includes fresh post-save UI data; all four native tabs share each grid request.
+    expect(reads).toHaveLength(7);
+    expect(calls.filter(([, init]) => init?.method === "POST")).toHaveLength(2);
+    expect(
+      reads
+        .filter(([url]) =>
+          new URL(String(url)).searchParams.has("includeGridData"),
+        )
+        .every(
+          ([url]) =>
+            new URL(String(url)).searchParams.getAll("ranges").length === 4,
+        ),
+    ).toBe(true);
+    expect(cellValue(google.tabs().find((t) => t.id === 21)!.rows[1][3])).toBe(
+      "External recovery note",
+    );
   });
   it.each([null, 7])(
     "preserves pre-connection journal RPE when the source starts at %s, then follows saved edits and explicit clears",
@@ -554,6 +602,43 @@ describe("Training Plan is the canonical calendar", () => {
     await expect(
       repo.commit([changed(s, { notes: "Race" })], "race", s),
     ).rejects.toThrow("just before saving");
+    expect(cellValue(google.source().rows[1][13])).toBe("Keep this note");
+    expect(google.tabs().some((t) => t.title === WRITE_LOCK_TITLE)).toBe(false);
+    google.onRead((n) => {
+      if (n === 2)
+        google.source().rows[1][4] = cell("Another scheduled change");
+    });
+    await expect(
+      repo.withWrite(async (transaction) => {
+        const fresh = (await transaction.read()).snapshot;
+        await transaction.commit(
+          [changed(fresh, { notes: "Must not overwrite scheduler" })],
+          "transaction-race",
+          fresh,
+        );
+      }),
+    ).rejects.toThrow("just before saving");
+    expect(cellValue(google.source().rows[1][13])).toBe("Keep this note");
+    expect(google.tabs().some((t) => t.title === WRITE_LOCK_TITLE)).toBe(false);
+  });
+  it("rejects a scheduler growing the sheet beyond the initial bounds before a transaction commits", async () => {
+    const google = fakePlanGoogle(),
+      client = new SheetsClient(google.http),
+      repo = new SheetsRepository(client);
+    await client.enableTrainingPlan();
+    google.onRead((n) => {
+      if (n === 2) google.source().rows.length = 101;
+    });
+    await expect(
+      repo.withWrite(async (transaction) => {
+        const fresh = (await transaction.read()).snapshot;
+        await transaction.commit(
+          [changed(fresh, { notes: "Must not ignore newly added rows" })],
+          "layout-race",
+          fresh,
+        );
+      }),
+    ).rejects.toThrow("layout changed");
     expect(cellValue(google.source().rows[1][13])).toBe("Keep this note");
     expect(google.tabs().some((t) => t.title === WRITE_LOCK_TITLE)).toBe(false);
   });

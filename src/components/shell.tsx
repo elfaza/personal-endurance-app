@@ -50,8 +50,16 @@ const nav = [
 ];
 export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { data, error, loading, offline, syncing, sync, refresh } =
-    useTraining();
+  const {
+    data,
+    error,
+    loading,
+    offline,
+    syncing,
+    sync,
+    refresh,
+    refreshRequired,
+  } = useTraining();
   const page = nav.find((n) => pathname.startsWith(n.href));
   return (
     <div className="app-shell">
@@ -175,7 +183,19 @@ export function Shell({ children }: { children: ReactNode }) {
               </>
             )}
           </div>
-          {pathname !== "/settings/google" && error ? (
+          {refreshRequired ? (
+            <div className="error-state" role="status">
+              <strong>Your changes were saved.</strong>
+              <p>
+                The summary could not refresh. Refresh it before making another
+                edit.
+              </p>
+              <Button variant="outline" onClick={() => void refresh()}>
+                Refresh saved data
+              </Button>
+            </div>
+          ) : null}
+          {pathname !== "/settings/google" && error && !refreshRequired ? (
             <div className="error-state" role="alert">
               <strong>We couldn’t load your training.</strong>
               <p>{error.message}</p>
