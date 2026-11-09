@@ -51,7 +51,11 @@ export async function request<T>(
       localStorage.removeItem(SNAPSHOT_KEY);
       location.assign(new URL("/login", location.origin).href);
     }
-    if (res.status === 429 && url !== "/api/auth") {
+    if (
+      res.status === 429 &&
+      url !== "/api/auth" &&
+      String(json.error ?? "").startsWith("Google Sheets")
+    ) {
       const seconds = Number(res.headers.get("Retry-After"));
       cooldownUntil =
         Date.now() +

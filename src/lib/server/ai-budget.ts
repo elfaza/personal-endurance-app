@@ -1,13 +1,20 @@
 import "server-only";
 import { z } from "zod";
 import { localDate } from "../dates";
-import type { Snapshot } from "../google-sheets/rows";
+import type { Snapshot, Change } from "../google-sheets/rows";
 import type { Budget } from "../wellness";
 import { record, change } from "./wellness-store";
 import { AppError } from "./errors";
+import {
+  failureSchema,
+  failureSummary,
+  failureReference,
+  type AiFailure,
+} from "./ai-failure";
 
 export const AI_MODEL = "gpt-6-luna";
-// Standard rates checked 2026-10-28. No tools, cache writes or premium tier.
+// Standard rates rechecked 2026-11-09 against OpenAI's GPT-6 Luna model page.
+// No tools, cache writes or premium tier; requests pin service_tier: default.
 export const INPUT_RATE = 0.1,
   OUTPUT_RATE = 0.5;
 export const MAX_INPUT_TOKENS = 131072,
@@ -54,12 +61,35 @@ export function budgetView(snapshot: Snapshot, now = new Date()): Budget {
     (sum, r) => sum + Number(r.payload.reservedIdr ?? 0),
     0,
   );
+  const latestFailure = snapshot.Meta.filter(
+    (r) =>
+      !r.deleted &&
+      r.id.startsWith("wellness:request:") &&
+      r.payload.month === month &&
+      r.payload.failure,
+  )
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .map((r) => ({
+      row: r,
+      failure: failureSchema.safeParse(r.payload.failure),
+    }))
+    .find((r) => r.failure.success);
   const [year, mon] = month.split("-").map(Number);
   const resetsOn = localDate(new Date(Date.UTC(year, mon, 1, 0)));
   return {
     month,
     usedIdr,
     reservedIdr,
+    settledIdr: Math.max(0, usedIdr - reservedIdr),
+    ...(latestFailure?.failure.success
+      ? {
+          lastFailure: {
+            summary: failureSummary(latestFailure.failure.data),
+            reference: failureReference(latestFailure.failure.data),
+            allowanceHeld: latestFailure.row.payload.status === "pending",
+          },
+        }
+      : {}),
     limitIdr: LIMIT_IDR,
     remainingIdr: Math.max(0, LIMIT_IDR - usedIdr),
     warning: usedIdr >= LIMIT_IDR * 0.8,
@@ -102,6 +132,8 @@ export function settlementChanges(
   input: number,
   output: number,
   result?: object,
+  failure?: AiFailure,
+  pricingUnverified = false,
 ) {
   z.number().int().nonnegative().parse(input);
   z.number().int().nonnegative().parse(output);
@@ -116,7 +148,8 @@ export function settlementChanges(
     .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
     .parse(request.payload.month);
   const budget = ledger(snapshot, month);
-  const overBound = input > MAX_INPUT_TOKENS || output > MAX_OUTPUT_TOKENS;
+  const overBound =
+    input > MAX_INPUT_TOKENS || output > MAX_OUTPUT_TOKENS || pricingUnverified;
   const reserved = z.literal(RESERVE_IDR).parse(request.payload.reservedIdr);
   const charged = overBound
     ? reserved
@@ -132,7 +165,54 @@ export function settlementChanges(
       input,
       output,
       chargedIdr: charged,
+      pricingVerified: !pricingUnverified,
       ...(result ? { result } : {}),
+      ...(failure ? { failure } : {}),
+    }),
+  ];
+}
+
+export function failureChanges(
+  snapshot: Snapshot,
+  op: string,
+  failure: AiFailure,
+  rejected: boolean,
+): Change[] {
+  const request = record(snapshot, `request:${op}`);
+  if (!request || request.payload.status !== "pending")
+    throw new AppError(
+      "This AI request is no longer pending. Refresh before reviewing its allowance.",
+      409,
+    );
+  const diagnostic = failureSchema.parse(failure);
+  if (!rejected)
+    return [
+      change(snapshot, `request:${op}`, {
+        ...request.payload,
+        failure: diagnostic,
+      }),
+    ];
+  const month = z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .parse(request.payload.month);
+  const reserved = z.literal(RESERVE_IDR).parse(request.payload.reservedIdr);
+  const budget = ledger(snapshot, month);
+  if (budget.usedIdr < reserved)
+    throw new AppError(
+      "AI spending records need review. The allowance was not released.",
+      409,
+    );
+  return [
+    change(snapshot, `budget:${month}`, {
+      ...budget,
+      usedIdr: budget.usedIdr - reserved,
+    }),
+    change(snapshot, `request:${op}`, {
+      ...request.payload,
+      status: "rejected",
+      chargedIdr: 0,
+      failure: diagnostic,
     }),
   ];
 }

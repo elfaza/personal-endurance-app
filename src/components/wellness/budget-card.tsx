@@ -28,19 +28,38 @@ export function BudgetCard({
       <progress
         max={budget.limitIdr}
         value={Math.min(budget.usedIdr, budget.limitIdr)}
-        aria-label="AI budget used"
+        aria-label="AI allowance allocated"
       />
       <div className="wellness-row helper">
         <span>
-          {money(budget.usedIdr)} of {money(budget.limitIdr)} · {percent}%
+          {money(budget.usedIdr)} of {money(budget.limitIdr)} allocated ·{" "}
+          {percent}%
         </span>
         <span>Resets {dateLabel(budget.resetsOn)} WIB</span>
       </div>
-      {budget.reservedIdr > 0 ? (
-        <p className="helper">
-          Includes {money(budget.reservedIdr)} reserved for pending or
-          unverified requests.
-        </p>
+      <p className="helper">
+        Settled estimate:{" "}
+        {money(
+          budget.settledIdr ?? Math.max(0, budget.usedIdr - budget.reservedIdr),
+        )}
+        . Held for pending or unverified requests: {money(budget.reservedIdr)}.{" "}
+        This app allowance is an estimate, not an OpenAI invoice.
+      </p>
+      {budget.lastFailure ? (
+        <details>
+          <summary>Last AI request issue</summary>
+          <p className="helper">{budget.lastFailure.summary}</p>
+          <p className="helper">
+            {budget.lastFailure.allowanceHeld
+              ? "Its allowance is still held pending review."
+              : "Its budget record is settled; it is not held as pending."}
+          </p>
+          {budget.lastFailure.reference ? (
+            <p className="helper" style={{ overflowWrap: "anywhere" }}>
+              Reference: {budget.lastFailure.reference}
+            </p>
+          ) : null}
+        </details>
       ) : null}
       {budget.blocked ? (
         <p className="wellness-notice" role="status">
@@ -49,7 +68,7 @@ export function BudgetCard({
         </p>
       ) : budget.warning ? (
         <p className="wellness-notice" role="status">
-          You’ve used at least 80% of this month’s allowance. No automatic
+          At least 80% of this month’s allowance is allocated. No automatic
           top-up.
         </p>
       ) : null}

@@ -26,13 +26,19 @@ export function TrainingOutlook() {
     setConsent(false);
     setBusy(true);
     setFailure("");
+    let generated = false;
     try {
       await request("/api/wellness/ai", { kind: "review", consent: true });
+      generated = true;
       await mutate();
       notify("Training review ready");
     } catch (e) {
-      setFailure((e as Error).message);
-      await mutate();
+      setFailure(
+        generated
+          ? "Your AI review was saved, but the page could not refresh. Refresh the page before generating again."
+          : (e as Error).message,
+      );
+      if (!generated) await mutate().catch(() => {});
     } finally {
       setBusy(false);
     }

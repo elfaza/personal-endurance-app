@@ -466,7 +466,7 @@ function MealEditor({
       setError((e as Error).message);
     } finally {
       setAnalyzing(false);
-      await onRefresh();
+      await onRefresh().catch(() => {});
     }
   }
   async function submit(e: FormEvent) {

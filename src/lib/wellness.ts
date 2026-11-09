@@ -69,6 +69,8 @@ export type Budget = {
   month: string;
   usedIdr: number;
   reservedIdr: number;
+  settledIdr?: number;
+  lastFailure?: { summary: string; reference: string; allowanceHeld: boolean };
   limitIdr: number;
   remainingIdr: number;
   warning: boolean;

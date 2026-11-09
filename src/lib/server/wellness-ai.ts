@@ -32,7 +32,25 @@ import {
   budgetView,
   reservationChanges,
   settlementChanges,
+  failureChanges,
 } from "./ai-budget";
+import {
+  AiProviderError,
+  providerFailure,
+  failureSummary,
+  failureReference,
+  requestId,
+  type AiFailure,
+} from "./ai-failure";
+
+async function withBudgetWrite<T>(
+  repo: Repository,
+  work: (repo: Repository) => Promise<T>,
+) {
+  return withLock(async () =>
+    repo.withWrite ? repo.withWrite(work) : work(repo),
+  );
+}
 
 export function aiReason(initialized: boolean) {
   const c = configuration();
@@ -130,6 +148,7 @@ const commandSchema = z.discriminatedUnion("kind", [
 const responseSchema = z.object({
   status: z.string(),
   model: z.string(),
+  service_tier: z.string().optional(),
   usage: z.object({
     input_tokens: z.number().int().nonnegative(),
     output_tokens: z.number().int().nonnegative(),
@@ -151,7 +170,7 @@ export async function generateWellness(
   send: typeof fetch = fetch,
 ): Promise<{ result: Review | PhotoResult; cached?: boolean }> {
   const command = commandSchema.parse(raw);
-  const prepared = await withLock(async () => {
+  const prepared = await withBudgetWrite(repo, async (repo) => {
     const { snapshot, initialized } = await repo.read();
     assertWritable(initialized);
     const reason = aiReason(initialized);
@@ -174,6 +193,11 @@ export async function generateWellness(
           input,
           hash,
         };
+      if (prior.payload.status === "rejected")
+        throw new AppError(
+          "This AI request was already rejected before generation. Its allowance was released. Fix the reported issue before starting a new request.",
+          409,
+        );
       throw new AppError(
         "This request was already submitted. Its allowance stays counted if the outcome is uncertain; refresh before requesting another analysis.",
         409,
@@ -196,6 +220,10 @@ export async function generateWellness(
   });
   if (prepared.cached) return { result: prepared.cached, cached: true };
   let response: z.infer<typeof responseSchema> | undefined;
+  let providerRequestId: string | undefined;
+  let providerResponded = false;
+  let settlementAttempted = false;
+  let pricingUnverified = false;
   try {
     const schema = command.kind === "review" ? reviewInput : aiFood;
     const instructions =
@@ -213,6 +241,7 @@ export async function generateWellness(
       });
     const body = {
       model: AI_MODEL,
+      service_tier: "default",
       store: false,
       reasoning: { effort: "none" },
       max_output_tokens: MAX_OUTPUT_TOKENS,
@@ -232,16 +261,15 @@ export async function generateWellness(
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
+        "X-Client-Request-Id": op,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(45000),
       cache: "no-store",
     });
-    if (!res.ok)
-      throw new AppError(
-        "AI could not finish this request. Your draft is safe. The request allowance stays counted because billing could not be verified; there was no automatic retry.",
-        502,
-      );
+    providerResponded = true;
+    providerRequestId = requestId(res.headers.get("x-request-id"));
+    if (!res.ok) throw await providerFailure(res);
     response = responseSchema.parse(await res.json());
     if (
       response.model !== AI_MODEL &&
@@ -249,9 +277,16 @@ export async function generateWellness(
     ) {
       // A mismatched model has unverified prices. Keep the full allowance and
       // pause new requests rather than settling at Luna's lower rates.
-      response.usage.input_tokens = MAX_INPUT_TOKENS + 1;
+      pricingUnverified = true;
       throw new AppError(
         "The AI model did not match the configured price. Its allowance stays counted and AI is paused for review.",
+        502,
+      );
+    }
+    if (response.service_tier !== "default") {
+      pricingUnverified = true;
+      throw new AppError(
+        "The AI processing tier did not match standard pricing. Its allowance stays counted and AI is paused for review.",
         502,
       );
     }
@@ -295,7 +330,8 @@ export async function generateWellness(
         ),
       };
     }
-    await withLock(async () => {
+    settlementAttempted = true;
+    await withBudgetWrite(repo, async (repo) => {
       const { snapshot } = await repo.read();
       const changes = settlementChanges(
         snapshot,
@@ -310,27 +346,62 @@ export async function generateWellness(
     });
     return { result };
   } catch (error) {
-    // Only confirmed usage can release any allowance. Unknown/timeout outcomes
-    // remain reserved indefinitely and therefore survive server restarts.
-    if (response) {
-      await withLock(async () => {
-        const { snapshot } = await repo.read();
-        if (record(snapshot, `request:${op}`)?.payload.status === "pending")
-          await repo.commit(
-            settlementChanges(
-              snapshot,
-              op,
-              response!.usage.input_tokens,
-              response!.usage.output_tokens,
-            ),
-            randomUUID(),
-            snapshot,
-          );
-      }).catch(() => {});
+    if (settlementAttempted) {
+      // A lost commit response must never cause a second automatic write.
+      throw new AppError(
+        "AI finished, but saving its result and budget could not be confirmed. Refresh to check the saved report. Do not generate it again until the pending request is reviewed. No automatic retry was made.",
+        503,
+      );
     }
-    if (error instanceof AppError) throw error;
+    const failure: AiFailure =
+      error instanceof AiProviderError
+        ? error.failure
+        : {
+            kind: providerResponded ? "invalid_response" : "connection",
+            at: new Date().toISOString(),
+            ...(providerRequestId ? { requestId: providerRequestId } : {}),
+          };
+    let recorded = false;
+    // Only confirmed pre-generation rejections or verified usage release budget.
+    // Timeouts, malformed errors and provider 5xx responses remain held.
+    await withBudgetWrite(repo, async (repo) => {
+      const { snapshot } = await repo.read();
+      const changes = response
+        ? settlementChanges(
+            snapshot,
+            op,
+            response!.usage.input_tokens,
+            response!.usage.output_tokens,
+            undefined,
+            failure,
+            pricingUnverified,
+          )
+        : failureChanges(
+            snapshot,
+            op,
+            failure,
+            error instanceof AiProviderError && error.rejected,
+          );
+      if (changes.length) await repo.commit(changes, randomUUID(), snapshot);
+      recorded = true;
+    }).catch(() => {
+      /* No retry: a ledger commit may have succeeded. */
+    });
+    const summary =
+      error instanceof AppError && !(error instanceof AiProviderError)
+        ? error.message
+        : failureSummary(failure);
+    const allowance = !recorded
+      ? "The budget update could not be confirmed; its allowance may still be held. Refresh before trying again."
+      : response
+        ? pricingUnverified
+          ? "Its full allowance remains counted because pricing is unverified; AI is paused for review."
+          : "Verified token usage was recorded in the app budget."
+        : error instanceof AiProviderError && error.rejected
+          ? "Rejected before generation. Its reserved allowance was released."
+          : "Its allowance stays held because processing or usage is unverified.";
     throw new AppError(
-      "AI could not produce a usable result. Your draft is safe. No automatic retry was made; check the budget before trying another request.",
+      `${summary} ${allowance} Your draft is safe. No automatic retry was made.${failureReference(failure) ? ` Reference: ${failureReference(failure)}.` : ""}`,
       502,
     );
   }

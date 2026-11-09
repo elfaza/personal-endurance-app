@@ -22,6 +22,7 @@ import {
   settlementChanges,
   monthKey,
   costIdr,
+  failureChanges,
 } from "@/lib/server/ai-budget";
 import { mealTotals, trainingOutlook, ageOn } from "@/lib/wellness";
 import { referenceItem } from "@/lib/nutrition";
@@ -121,6 +122,7 @@ function provider(
   return vi.fn<typeof fetch>().mockResolvedValue(
     Response.json({
       model: "gpt-6-luna",
+      service_tier: "default",
       status: "completed",
       usage,
       output: [
@@ -330,6 +332,7 @@ describe("cost guard and AI boundary", () => {
     expect(body.store).toBe(false);
     expect(body.tools).toBeUndefined();
     expect(body.model).toBe("gpt-6-luna");
+    expect(body.service_tier).toBe("default");
     expect(body.text.format.strict).toBe(true);
     expect(body.max_output_tokens).toBe(2048);
   });
@@ -385,6 +388,158 @@ describe("cost guard and AI boundary", () => {
     ).rejects.toThrow("already submitted");
     expect(send).toHaveBeenCalledTimes(1);
   });
+  it.each([
+    [400, "invalid_request_error", "invalid_json_schema", "request format"],
+    [401, "invalid_request_error", "invalid_api_key", "API key"],
+    [403, "permission_error", null, "permission"],
+    [404, "invalid_request_error", "model_not_found", "model"],
+    [429, "rate_limit_error", "rate_limit_exceeded", "rate limiting"],
+    [429, "insufficient_quota", "insufficient_quota", "credit or usage"],
+    [429, "insufficient_quota", "credit_balance_exhausted", "credit or usage"],
+  ])(
+    "releases allowance for a verified pre-generation rejection (%s/%s/%s) and sanitizes diagnostics",
+    async (status, type, code, expected) => {
+      const repo = await liveMemory(),
+        op = randomUUID();
+      const oldReview = {
+        ...review,
+        generatedAt: new Date().toISOString(),
+        inputHash: "older-context",
+        model: "gpt-6-luna",
+      };
+      await repo.commit(
+        [change(repo.snapshot, "review", oldReview)],
+        randomUUID(),
+      );
+      const send = vi.fn<typeof fetch>().mockResolvedValue(
+        Response.json(
+          {
+            error: {
+              type,
+              code,
+              message: "secret-api-key and private training prompt and photo",
+            },
+          },
+          {
+            status: Number(status),
+            headers: { "x-request-id": "req_safe_diagnostic" },
+          },
+        ),
+      );
+      await expect(
+        generateWellness({ kind: "review", consent: true }, op, repo, send),
+      ).rejects.toThrow(String(expected));
+      expect(send).toHaveBeenCalledTimes(1);
+      const view = await getWellness(repo);
+      expect(view.budget.usedIdr).toBe(0);
+      expect(view.budget.reservedIdr).toBe(0);
+      expect(view.budget.settledIdr).toBe(0);
+      expect(view.budget.lastFailure?.allowanceHeld).toBe(false);
+      expect(view.budget.lastFailure?.reference).toContain(
+        "req_safe_diagnostic",
+      );
+      expect(view.review).toEqual(oldReview);
+      expect(JSON.stringify(repo.snapshot)).not.toContain("secret-api-key");
+      await expect(
+        generateWellness({ kind: "review", consent: true }, op, repo, send),
+      ).rejects.toThrow("already rejected");
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(budgetView(repo.snapshot).usedIdr).toBe(0);
+    },
+  );
+  it.each([
+    [
+      500,
+      {
+        error: { type: "server_error", code: null, message: "private prompt" },
+      },
+    ],
+    [400, { unrecognized: "private secret" }],
+    [429, { error: { type: "rate_limit_error", code: "unknown_code" } }],
+    [
+      400,
+      {
+        error: { type: "invalid_request_error", code: null },
+        usage: { input_tokens: 100 },
+      },
+    ],
+  ])(
+    "retains allowance for uncertain provider outcomes (%s)",
+    async (status, body) => {
+      const repo = await liveMemory();
+      const send = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(Response.json(body, { status: Number(status) }));
+      await expect(
+        generateWellness(
+          { kind: "review", consent: true },
+          randomUUID(),
+          repo,
+          send,
+        ),
+      ).rejects.toThrow("allowance stays held");
+      const budget = budgetView(repo.snapshot);
+      expect(budget.usedIdr).toBe(RESERVE_IDR);
+      expect(budget.reservedIdr).toBe(RESERVE_IDR);
+      expect(budget.settledIdr).toBe(0);
+      expect(budget.lastFailure?.allowanceHeld).toBe(true);
+      expect(JSON.stringify(repo.snapshot)).not.toContain("private prompt");
+      expect(send).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each([false, true])(
+    "never retries uncertain settlement, whether the first commit applied (%s)",
+    async (applied) => {
+      const repo = await liveMemory(),
+        send = provider(review),
+        original = repo.commit.bind(repo);
+      let commits = 0;
+      vi.spyOn(repo, "commit").mockImplementation(async (changes, op) => {
+        commits++;
+        if (commits === 2) {
+          if (applied) await original(changes, op);
+          throw new Error("lost commit response");
+        }
+        await original(changes, op);
+      });
+      await expect(
+        generateWellness(
+          { kind: "review", consent: true },
+          randomUUID(),
+          repo,
+          send,
+        ),
+      ).rejects.toThrow("saving its result and budget could not be confirmed");
+      expect(commits).toBe(2);
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(budgetView(repo.snapshot).usedIdr).toBe(
+        applied ? costIdr(1000, 300) : RESERVE_IDR,
+      );
+    },
+  );
+  it("settles rejection against its original month and cannot refund twice", async () => {
+    const repo = await liveMemory(),
+      op = randomUUID();
+    const month = new Date("2026-10-31T16:59:00Z");
+    await repo.commit(
+      reservationChanges(repo.snapshot, op, "hash", "review", month),
+      randomUUID(),
+    );
+    const failure = {
+      kind: "authentication" as const,
+      at: new Date().toISOString(),
+      httpStatus: 401,
+    };
+    await repo.commit(
+      failureChanges(repo.snapshot, op, failure, true),
+      randomUUID(),
+    );
+    expect(budgetView(repo.snapshot, month).usedIdr).toBe(0);
+    expect(() => failureChanges(repo.snapshot, op, failure, true)).toThrow(
+      "no longer pending",
+    );
+    expect(budgetView(repo.snapshot).limitIdr).toBe(20000);
+  });
   it("uses Jakarta month boundaries and settles old requests against their original month", async () => {
     const repo = await liveMemory(),
       op = randomUUID();
@@ -404,6 +559,28 @@ describe("cost guard and AI boundary", () => {
     expect(budgetView(repo.snapshot, before).usedIdr).toBe(costIdr(1000, 300));
     expect(budgetView(repo.snapshot, after).usedIdr).toBe(0);
   });
+  it.each([{ model: "unexpected-model" }, { service_tier: "priority" }])(
+    "keeps real usage counters when pricing cannot be verified (%j)",
+    async (overrides) => {
+      const repo = await liveMemory(),
+        op = randomUUID();
+      await expect(
+        generateWellness(
+          { kind: "review", consent: true },
+          op,
+          repo,
+          provider(review, undefined, overrides),
+        ),
+      ).rejects.toThrow("pricing is unverified");
+      expect(record(repo.snapshot, `request:${op}`)?.payload).toMatchObject({
+        input: 1000,
+        output: 300,
+        chargedIdr: RESERVE_IDR,
+        pricingVerified: false,
+      });
+      expect(budgetView(repo.snapshot).blocked).toBe(true);
+    },
+  );
   it("fails closed on damaged spending records", async () => {
     const repo = await liveMemory(),
       send = provider(review);
@@ -428,6 +605,7 @@ describe("cost guard and AI boundary", () => {
         output_tokens: 300,
       }),
       provider(review, undefined, { model: "unexpected-expensive-model" }),
+      provider(review, undefined, { service_tier: "priority" }),
     ]) {
       const repo = await liveMemory();
       await expect(
@@ -491,7 +669,7 @@ describe("cost guard and AI boundary", () => {
         repo,
         bad,
       ),
-    ).rejects.toThrow("usable result");
+    ).rejects.toThrow("could not be validated");
     expect(record(repo.snapshot, "review")).toBeUndefined();
   });
 });
