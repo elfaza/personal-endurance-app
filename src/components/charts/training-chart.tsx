@@ -151,6 +151,13 @@ export function TrainingChart({
               strokeWidth={2.5}
               fill={`url(#fill-${metric})`}
               connectNulls={false}
+              dot={{
+                r: 4,
+                fill: keys[0].color,
+                stroke: "var(--panel)",
+                strokeWidth: 2,
+              }}
+              activeDot={{ r: 6, stroke: "var(--panel)", strokeWidth: 2 }}
             />
           )}
         </ComposedChart>
