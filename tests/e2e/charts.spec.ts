@@ -40,6 +40,11 @@ for (const count of [1, 2, 0]) {
       });
       await expect(chart.locator(".recharts-surface")).toBeVisible();
       await expect(chart.locator(".recharts-area-dot")).toHaveCount(count);
+      if (count === 2)
+        await expect(chart.locator(".recharts-area-curve")).toHaveAttribute(
+          "d",
+          /^M[^M]*L[^M]*$/,
+        );
       if (count) {
         const point = chart.locator(".recharts-area-dot").first();
         await expect(point).toBeVisible();
@@ -58,6 +63,11 @@ for (const count of [1, 2, 0]) {
       await chart.scrollIntoViewIfNeeded();
       await expect(chart.locator(".recharts-surface")).toBeVisible();
       await expect(chart.locator(".recharts-area-dot")).toHaveCount(count);
+      if (count === 2)
+        await expect(chart.locator(".recharts-area-curve")).toHaveAttribute(
+          "d",
+          /^M[^M]*L[^M]*$/,
+        );
       if (count)
         await expect(chart.locator(".recharts-area-dot").first()).toBeVisible();
     }

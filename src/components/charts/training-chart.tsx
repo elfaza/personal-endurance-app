@@ -144,13 +144,13 @@ export function TrainingChart({
             </>
           ) : (
             <Area
-              type="monotone"
+              type="linear"
               dataKey={keys[0].key}
               name={keys[0].name}
               stroke={keys[0].color}
               strokeWidth={2.5}
               fill={`url(#fill-${metric})`}
-              connectNulls={false}
+              connectNulls
               dot={{
                 r: 4,
                 fill: keys[0].color,

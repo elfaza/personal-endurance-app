@@ -125,7 +125,7 @@ export function Analytics() {
             {
               metric: "pace",
               title: "Finding your pace",
-              text: "Distance-weighted running pace. Gaps mean no recorded runs.",
+              text: "Distance-weighted running pace. Lines connect recorded sessions; days without runs have no points.",
             },
             {
               metric: "volume",
@@ -135,12 +135,12 @@ export function Analytics() {
             {
               metric: "consistency",
               title: "Showing up for yourself",
-              text: "Completed required sessions ÷ scheduled required sessions × 100.",
+              text: "Completed required sessions ÷ scheduled required sessions × 100. Lines connect days with scheduled sessions.",
             },
             {
               metric: "heart",
               title: "Heart rate over time",
-              text: "Duration-weighted average of activities with heart rate data.",
+              text: "Duration-weighted average of recorded heart rate. Lines connect recorded days; missing data has no points.",
             },
           ] as const
         ).map((c) => (

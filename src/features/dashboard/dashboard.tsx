@@ -378,8 +378,8 @@ export function Dashboard() {
             ) : (
               <span>
                 {chart === "pace"
-                  ? "Total running duration ÷ total running distance"
-                  : "Duration-weighted average recorded heart rate"}
+                  ? "Total running duration ÷ total running distance · Lines connect recorded sessions"
+                  : "Duration-weighted average recorded heart rate · Lines connect recorded days"}
               </span>
             )}
           </div>
